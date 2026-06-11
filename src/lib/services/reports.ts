@@ -23,6 +23,13 @@ export interface InterviewQuestions {
   culture_fit: string[];
 }
 
+export interface OnboardingPlan {
+  week_1: string;
+  weeks_2_4: string;
+  month_2: string;
+  month_3: string;
+}
+
 export interface ReportData {
   executive_summary: string;
   business_goal: string;
@@ -36,6 +43,7 @@ export interface ReportData {
   confidence_score: number;
   job_description: string | null;
   interview_questions: InterviewQuestions | null;
+  onboarding_plan: OnboardingPlan | null;
 }
 
 export interface HireRightReport {

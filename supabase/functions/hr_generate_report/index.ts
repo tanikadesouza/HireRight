@@ -53,6 +53,12 @@ const SYNTHESIS_SYSTEM_PROMPT = `You are a strategic hiring advisor synthesizing
     "culture_fit": [
       "What's your approach to...(3 culture-fit questions based on the business goals and values expressed in this session)"
     ]
+  },
+  "onboarding_plan": {
+    "week_1": "Specific Week 1 orientation tasks for this role: tools to set up, people to meet, processes to learn. 2-4 bullet points.",
+    "weeks_2_4": "Training and shadowing activities for weeks 2-4 specific to this role. Include key deliverables and check-in cadence.",
+    "month_2": "First solo projects the hire should own. Include performance indicators and check-in frequency.",
+    "month_3": "Performance review criteria specific to this role. What does success look like at 90 days?"
   }
 }
 

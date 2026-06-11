@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ReportData } from "@/lib/services/reports";
+import type { OnboardingPlan } from "@/lib/services/reports";
 import { FinancialCalculator } from "./FinancialCalculator";
 import { ShareReportModal } from "./ShareReportModal";
 
@@ -54,6 +55,62 @@ function CopyButton({ text }: { text: string }) {
         </>
       )}
     </button>
+  );
+}
+
+function OnboardingPlanSection({ plan }: { plan: OnboardingPlan }) {
+  const phases = [
+    { label: "Week 1", content: plan.week_1, color: "bg-blue-50 border-blue-200 text-blue-800" },
+    { label: "Weeks 2–4", content: plan.weeks_2_4, color: "bg-indigo-50 border-indigo-200 text-indigo-800" },
+    { label: "Month 2", content: plan.month_2, color: "bg-purple-50 border-purple-200 text-purple-800" },
+    { label: "Month 3", content: plan.month_3, color: "bg-green-50 border-green-200 text-green-800" },
+  ];
+
+  return (
+    <details className="bg-white rounded-xl border border-gray-200 group">
+      <summary className="p-6 cursor-pointer font-semibold text-gray-800 hover:text-gray-900 select-none list-none flex items-center justify-between">
+        <span>90-Day Onboarding Plan</span>
+        <svg
+          className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </summary>
+      <div className="px-6 pb-6 pt-0 border-t border-gray-100">
+        <div className="pt-5 space-y-3">
+          <p className="text-xs text-gray-500">
+            Week-by-week roadmap to set your new hire up for success.
+          </p>
+          {phases.map(({ label, content, color }) => (
+            <div key={label} className={`rounded-lg border p-4 ${color}`}>
+              <p className="text-xs font-bold uppercase tracking-wider mb-1.5 opacity-70">
+                {label}
+              </p>
+              <p className="text-sm leading-relaxed">{content}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function AssistantBookButton({ roleTitle }: { roleTitle: string }) {
+  const subject = encodeURIComponent("Please schedule: HireRight Strategic Hiring Debrief");
+  const body = encodeURIComponent(
+    `Hi,\n\nI just completed the PROFIT method for my next strategic hire (${roleTitle}) and need to book a follow-up call with Tanika at HireRight.\n\nHere's the scheduling link: https://calendly.com/hireright/discovery\n\nPlease find a time this week and add it to my calendar.\n\nThanks!`
+  );
+
+  return (
+    <a
+      href={`mailto:?subject=${subject}&body=${body}`}
+      className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-xl text-sm hover:bg-gray-50 transition-colors"
+    >
+      Have assistant book
+    </a>
   );
 }
 
@@ -324,6 +381,11 @@ export function ReportCard({ report, sessionId }: ReportCardProps) {
         </details>
       )}
 
+      {/* 90-Day Onboarding Plan */}
+      {report.onboarding_plan && (
+        <OnboardingPlanSection plan={report.onboarding_plan} />
+      )}
+
       {/* CTA Buttons */}
       <div className="flex flex-wrap gap-3">
         <a
@@ -334,6 +396,7 @@ export function ReportCard({ report, sessionId }: ReportCardProps) {
         >
           Book a Call
         </a>
+        <AssistantBookButton roleTitle={role.title} />
         <button
           type="button"
           disabled

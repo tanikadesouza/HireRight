@@ -349,6 +349,74 @@ export async function getAllUsers(): Promise<{
 }
 
 // ---------------------------------------------------------------------------
+// Bulk email
+// ---------------------------------------------------------------------------
+
+export interface BulkEmailTarget {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+}
+
+/**
+ * Returns all users with a given tag, for bulk-email targeting.
+ * Returns empty array if no users match (admin can validate before sending).
+ */
+export async function getUsersByTag(tagName: string): Promise<{
+  data: BulkEmailTarget[] | null;
+  error: string | null;
+}> {
+  try {
+    const _supabase = await createClient();
+    const supabase = untyped(_supabase);
+
+    // Find tag ID
+    const { data: tagData, error: tagError } = await supabase
+      .from("hr_tags")
+      .select("id")
+      .eq("name", tagName)
+      .single();
+
+    if (tagError || !tagData) {
+      return { data: [], error: null };
+    }
+
+    // Find all user_ids with this tag
+    const { data: userTags, error: utError } = await supabase
+      .from("hr_user_tags")
+      .select("user_id")
+      .eq("tag_id", (tagData as { id: string }).id);
+
+    if (utError || !userTags || (userTags as unknown[]).length === 0) {
+      return { data: [], error: null };
+    }
+
+    const userIds = (userTags as Array<{ user_id: string }>).map((r) => r.user_id);
+
+    // Fetch user details using typed client
+    const { data: users, error: usersError } = await _supabase
+      .from("hr_users")
+      .select("id, email, full_name")
+      .in("id", userIds);
+
+    if (usersError) {
+      return { data: null, error: "Failed to fetch users for tag" };
+    }
+
+    return {
+      data: (users ?? []).map((u) => ({
+        user_id: u.id,
+        email: u.email,
+        full_name: u.full_name,
+      })),
+      error: null,
+    };
+  } catch {
+    return { data: null, error: "Failed to fetch users for tag" };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
