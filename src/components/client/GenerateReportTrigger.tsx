@@ -65,7 +65,7 @@ export function GenerateReportTrigger({ sessionId }: GenerateReportTriggerProps)
   }
 
   if (report) {
-    return <ReportCard report={report} />;
+    return <ReportCard report={report} sessionId={sessionId} />;
   }
 
   return null;

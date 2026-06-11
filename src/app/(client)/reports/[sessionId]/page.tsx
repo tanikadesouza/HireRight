@@ -67,7 +67,7 @@ export default async function ReportPage({ params }: ReportPageProps) {
 
         {/* Report content */}
         {reportData ? (
-          <ReportCard report={reportData} />
+          <ReportCard report={reportData} sessionId={sessionId} />
         ) : (
           <GenerateReportTrigger sessionId={sessionId} />
         )}

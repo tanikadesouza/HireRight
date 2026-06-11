@@ -29,8 +29,8 @@ const SYNTHESIS_SYSTEM_PROMPT = `You are a strategic hiring advisor synthesizing
   "recommended_role": {
     "title": "Specific role title",
     "type": "full_time|fractional|contractor",
-    "responsibilities": ["..."],
-    "required_skills": ["..."],
+    "responsibilities": ["list of 4-6 specific responsibilities"],
+    "required_skills": ["list of 5-8 specific skills"],
     "salary_range": "e.g. $50,000–$65,000"
   },
   "alignment_rationale": "Why this role aligns with the business goal",
@@ -41,7 +41,19 @@ const SYNTHESIS_SYSTEM_PROMPT = `You are a strategic hiring advisor synthesizing
   ],
   "red_flags": ["Any hiring-too-soon warnings, if applicable"],
   "internal_candidate_note": "If internal promotion is viable, note it here. Otherwise null.",
-  "confidence_score": 8
+  "confidence_score": 8,
+  "job_description": "A complete, ready-to-post job description for this role. Include: About the Role (2-3 sentences), What You'll Do (bullet list of responsibilities), What We're Looking For (bullet list of requirements), What We Offer (compensation range, benefits, flexibility). Keep it under 600 words. Write as if the founder is the employer.",
+  "interview_questions": {
+    "behavioral": [
+      "Tell me about a time you...(4 behavioral questions tied to the specific gaps identified in this session)"
+    ],
+    "situational": [
+      "How would you handle...(3 situational questions specific to the role's challenges)"
+    ],
+    "culture_fit": [
+      "What's your approach to...(3 culture-fit questions based on the business goals and values expressed in this session)"
+    ]
+  }
 }
 
 Respond with ONLY the JSON object — no prose, no markdown fences.`;

@@ -129,6 +129,51 @@ export async function getSession(sessionId: string): Promise<{
 }
 
 /**
+ * Returns all completed sessions for the current user, each joined with its
+ * report data. Used for the session history comparison view (US-011).
+ */
+export async function getSessionsWithReports(): Promise<{
+  data: Array<ProfitSession & { report_data: Record<string, unknown> | null }> | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("hr_profit_sessions")
+      .select(
+        "id, user_id, status, current_step, session_data, report_generated, completed_at, created_at, updated_at, hr_reports(report_data)"
+      )
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false });
+
+    if (error) {
+      return { data: null, error: "Failed to load session history" };
+    }
+
+    type RowWithReport = ProfitSession & {
+      hr_reports: { report_data: Record<string, unknown> } | { report_data: Record<string, unknown> }[] | null;
+    };
+
+    const mapped = ((data ?? []) as RowWithReport[]).map((row) => {
+      const reportsArr = Array.isArray(row.hr_reports)
+        ? row.hr_reports
+        : row.hr_reports
+        ? [row.hr_reports]
+        : [];
+      const report = reportsArr[0] ?? null;
+      return {
+        ...row,
+        report_data: report ? (report.report_data as Record<string, unknown>) : null,
+      };
+    });
+
+    return { data: mapped, error: null };
+  } catch {
+    return { data: null, error: "Failed to load session history" };
+  }
+}
+
+/**
  * Returns all messages for a PROFIT session in chronological order.
  * RLS ensures the user can only access messages in their own sessions.
  */

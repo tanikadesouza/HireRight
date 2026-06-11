@@ -137,9 +137,19 @@ export default async function DashboardPage() {
         {/* Sessions list */}
         {hasActiveSessions ? (
           <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-              Your Sessions
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                Your Sessions
+              </h2>
+              {sessions!.filter((s) => s.status === "completed").length >= 2 && (
+                <Link
+                  href="/dashboard/history"
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Compare sessions →
+                </Link>
+              )}
+            </div>
             <div className="space-y-3">
               {sessions!.map((session) => (
                 <SessionCard key={session.id} session={session} />

@@ -17,6 +17,12 @@ export interface RecommendedRole {
   salary_range: string;
 }
 
+export interface InterviewQuestions {
+  behavioral: string[];
+  situational: string[];
+  culture_fit: string[];
+}
+
 export interface ReportData {
   executive_summary: string;
   business_goal: string;
@@ -28,6 +34,8 @@ export interface ReportData {
   red_flags: string[];
   internal_candidate_note: string | null;
   confidence_score: number;
+  job_description: string | null;
+  interview_questions: InterviewQuestions | null;
 }
 
 export interface HireRightReport {

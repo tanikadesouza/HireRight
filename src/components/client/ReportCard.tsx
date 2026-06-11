@@ -1,26 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import type { ReportData } from "@/lib/services/reports";
+import { FinancialCalculator } from "./FinancialCalculator";
+import { ShareReportModal } from "./ShareReportModal";
 
 interface ReportCardProps {
   report: ReportData;
-}
-
-function ConfidenceBadge({ score }: { score: number }) {
-  const color =
-    score >= 8
-      ? "bg-green-100 text-green-800"
-      : score >= 5
-      ? "bg-yellow-100 text-yellow-800"
-      : "bg-red-100 text-red-800";
-
-  return (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${color}`}
-    >
-      Confidence: {score}/10
-    </span>
-  );
+  sessionId: string;
 }
 
 function RoleTypeBadge({ type }: { type: string }) {
@@ -36,7 +23,41 @@ function RoleTypeBadge({ type }: { type: string }) {
   );
 }
 
-export function ReportCard({ report }: ReportCardProps) {
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+    >
+      {copied ? (
+        <>
+          <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Copied!
+        </>
+      ) : (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          Copy
+        </>
+      )}
+    </button>
+  );
+}
+
+export function ReportCard({ report, sessionId }: ReportCardProps) {
   const role = report.recommended_role;
 
   return (
@@ -154,18 +175,154 @@ export function ReportCard({ report }: ReportCardProps) {
         </div>
       )}
 
-      {/* Financial Reality Check (stub) */}
-      <details className="bg-white rounded-xl border border-gray-200">
-        <summary className="p-6 cursor-pointer font-semibold text-gray-800 hover:text-gray-900 select-none">
-          Financial Reality Check
+      {/* Financial Reality Check */}
+      <details className="bg-white rounded-xl border border-gray-200 group">
+        <summary className="p-6 cursor-pointer font-semibold text-gray-800 hover:text-gray-900 select-none list-none flex items-center justify-between">
+          <span>Financial Reality Check</span>
+          <svg
+            className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </summary>
         <div className="px-6 pb-6 pt-0 border-t border-gray-100">
-          <p className="text-sm text-gray-500 italic">
-            A detailed breakdown of total compensation costs, payroll taxes, benefits, and
-            onboarding investment will appear here in a future update.
-          </p>
+          <div className="pt-5">
+            <FinancialCalculator suggestedSalary={role.salary_range} />
+          </div>
         </div>
       </details>
+
+      {/* AI-Generated Job Description */}
+      {report.job_description && (
+        <details className="bg-white rounded-xl border border-gray-200 group">
+          <summary className="p-6 cursor-pointer font-semibold text-gray-800 hover:text-gray-900 select-none list-none flex items-center justify-between">
+            <span>Job Description (Ready to Post)</span>
+            <svg
+              className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <div className="px-6 pb-6 pt-0 border-t border-gray-100">
+            <div className="pt-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500">
+                  Auto-generated from your PROFIT session. Copy and customize before posting.
+                </p>
+                <CopyButton text={report.job_description} />
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-mono text-xs">
+                {report.job_description}
+              </div>
+            </div>
+          </div>
+        </details>
+      )}
+
+      {/* Interview Question Bank */}
+      {report.interview_questions && (
+        <details className="bg-white rounded-xl border border-gray-200 group">
+          <summary className="p-6 cursor-pointer font-semibold text-gray-800 hover:text-gray-900 select-none list-none flex items-center justify-between">
+            <span>Interview Question Bank</span>
+            <svg
+              className="w-5 h-5 text-gray-400 group-open:rotate-180 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </summary>
+          <div className="px-6 pb-6 pt-0 border-t border-gray-100">
+            <div className="pt-5 space-y-5">
+              <p className="text-xs text-gray-500">
+                10 tailored interview questions based on your PROFIT discovery session.
+              </p>
+
+              {report.interview_questions.behavioral &&
+                report.interview_questions.behavioral.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                      Behavioral
+                    </h4>
+                    <ol className="space-y-2">
+                      {report.interview_questions.behavioral.map((q, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center mt-0.5">
+                            {i + 1}
+                          </span>
+                          {q}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+              {report.interview_questions.situational &&
+                report.interview_questions.situational.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                      Situational
+                    </h4>
+                    <ol className="space-y-2">
+                      {report.interview_questions.situational.map((q, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center mt-0.5">
+                            {i + 1}
+                          </span>
+                          {q}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+              {report.interview_questions.culture_fit &&
+                report.interview_questions.culture_fit.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+                      Culture Fit
+                    </h4>
+                    <ol className="space-y-2">
+                      {report.interview_questions.culture_fit.map((q, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700">
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 text-purple-700 text-xs font-bold flex items-center justify-center mt-0.5">
+                            {i + 1}
+                          </span>
+                          {q}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+              <div className="pt-1">
+                <CopyButton
+                  text={[
+                    report.interview_questions.behavioral?.length
+                      ? `BEHAVIORAL QUESTIONS\n${report.interview_questions.behavioral.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
+                      : "",
+                    report.interview_questions.situational?.length
+                      ? `\nSITUATIONAL QUESTIONS\n${report.interview_questions.situational.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
+                      : "",
+                    report.interview_questions.culture_fit?.length
+                      ? `\nCULTURE FIT QUESTIONS\n${report.interview_questions.culture_fit.map((q, i) => `${i + 1}. ${q}`).join("\n")}`
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join("\n")}
+                />
+              </div>
+            </div>
+          </div>
+        </details>
+      )}
 
       {/* CTA Buttons */}
       <div className="flex flex-wrap gap-3">
@@ -185,14 +342,7 @@ export function ReportCard({ report }: ReportCardProps) {
         >
           Download PDF
         </button>
-        <button
-          type="button"
-          disabled
-          className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-gray-300 text-gray-500 font-medium rounded-xl text-sm cursor-not-allowed"
-          title="Coming soon"
-        >
-          Share
-        </button>
+        <ShareReportModal sessionId={sessionId} roleTitle={role.title} />
       </div>
     </div>
   );
