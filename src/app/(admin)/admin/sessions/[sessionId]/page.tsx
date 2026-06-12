@@ -3,7 +3,8 @@
 // Middleware guards /admin/* routes (admin role required).
 
 import Link from "next/link";
-import { getSessionWithUser, getNotes, getTags, getUserTags } from "@/lib/services/admin";
+import { getSessionWithUser, getNotes, getTags, getUserTags, getEmailLogForSession } from "@/lib/services/admin";
+import type { EmailLogEntry } from "@/lib/services/admin";
 import { getMessages } from "@/lib/services/profit-sessions";
 import { getHiringStage, getReport, HIRING_STAGE_LABELS } from "@/lib/services/reports";
 import type { FinancialModel } from "@/lib/services/reports";
@@ -30,7 +31,7 @@ export default async function AdminSessionDetailPage({
 }: AdminSessionDetailProps) {
   const { sessionId } = await params;
 
-  const [sessionResult, notesResult, tagsResult, messagesResult, hiringStageResult, reportResult] =
+  const [sessionResult, notesResult, tagsResult, messagesResult, hiringStageResult, reportResult, emailLogResult] =
     await Promise.all([
       getSessionWithUser(sessionId),
       getNotes(sessionId),
@@ -38,6 +39,7 @@ export default async function AdminSessionDetailPage({
       getMessages(sessionId),
       getHiringStage(sessionId),
       getReport(sessionId),
+      getEmailLogForSession(sessionId),
     ]);
 
   const session = sessionResult.data;
@@ -52,6 +54,7 @@ export default async function AdminSessionDetailPage({
   const messages = messagesResult.data ?? [];
   const hiringStage = hiringStageResult.data;
   const financialModel = reportResult.data?.report_data?.financial_model as FinancialModel | null | undefined;
+  const emailLog: EmailLogEntry[] = emailLogResult.data ?? [];
 
   if (!session) {
     return (
@@ -231,6 +234,57 @@ export default async function AdminSessionDetailPage({
           />
         </div>
       )}
+
+      {/* Email Log */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          Automated Emails Sent
+        </h2>
+        {emailLog.length === 0 ? (
+          <p className="text-sm text-gray-400">No automated emails sent for this session yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="pb-2 text-left font-semibold text-gray-500">Type</th>
+                  <th className="pb-2 text-left font-semibold text-gray-500">Subject</th>
+                  <th className="pb-2 text-left font-semibold text-gray-500">Status</th>
+                  <th className="pb-2 text-left font-semibold text-gray-500">Sent</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {emailLog.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="py-2 pr-4">
+                      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">
+                        {entry.email_type}
+                      </code>
+                    </td>
+                    <td className="py-2 pr-4 text-gray-600 max-w-xs truncate">
+                      {(entry.metadata?.subject as string) ?? "—"}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        entry.status === "sent"
+                          ? "bg-green-100 text-green-700"
+                          : entry.status === "failed"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}>
+                        {entry.status}
+                      </span>
+                    </td>
+                    <td className="py-2 text-gray-500">
+                      {entry.sent_at ? formatDate(entry.sent_at) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Internal Notes */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">

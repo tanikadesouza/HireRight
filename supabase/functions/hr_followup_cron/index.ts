@@ -69,7 +69,7 @@ async function sendEmail(
   to: string,
   subject: string,
   html: string
-): Promise<boolean> {
+): Promise<{ ok: boolean; messageId: string | null }> {
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -79,9 +79,39 @@ async function sendEmail(
       },
       body: JSON.stringify({ from: RESEND_FROM, to, subject, html }),
     });
-    return res.ok;
+    if (res.ok) {
+      const body = await res.json() as { id?: string };
+      return { ok: true, messageId: body.id ?? null };
+    }
+    return { ok: false, messageId: null };
   } catch {
-    return false;
+    return { ok: false, messageId: null };
+  }
+}
+
+async function logEmail(
+  client: ReturnType<typeof createClient>,
+  opts: {
+    userId: string;
+    sessionId: string;
+    emailType: string;
+    messageId: string | null;
+    status: "sent" | "failed";
+    subject: string;
+  }
+): Promise<void> {
+  try {
+    await client.from("hr_email_log").insert({
+      user_id: opts.userId,
+      session_id: opts.sessionId,
+      email_type: opts.emailType,
+      resend_message_id: opts.messageId,
+      status: opts.status,
+      metadata: { subject: opts.subject },
+      sent_at: opts.status === "sent" ? new Date().toISOString() : null,
+    });
+  } catch {
+    // Fire-and-forget — never block email sending on log writes
   }
 }
 
@@ -282,13 +312,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
             );
 
             if (canSendFollowup14d) {
+              const subject = `Your HireRight Roadmap — ${roleTitle}`;
               if (resendConfigured) {
-                const ok = await sendEmail(
-                  resendKey,
-                  userEmail,
-                  `Your HireRight Roadmap — ${roleTitle}`,
+                const { ok, messageId } = await sendEmail(
+                  resendKey, userEmail, subject,
                   buildCompletedD1Html(userName, session.id, roleTitle, session.user_id)
                 );
+                await logEmail(serviceClient, {
+                  userId: session.user_id, sessionId: session.id,
+                  emailType: "followup_day1", messageId,
+                  status: ok ? "sent" : "failed", subject,
+                });
                 if (ok) emailsSent++;
                 else errors++;
               } else {
@@ -301,13 +335,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
           // Day 3
           if (daysSinceComplete >= 3 && !followup.completed_d3) {
             if (canSendFollowup14d) {
+              const subject = "Quick check-in — are you moving forward with your hire?";
               if (resendConfigured) {
-                const ok = await sendEmail(
-                  resendKey,
-                  userEmail,
-                  "Quick check-in — are you moving forward with your hire?",
+                const { ok, messageId } = await sendEmail(
+                  resendKey, userEmail, subject,
                   buildCompletedD3Html(userName, session.id, session.user_id)
                 );
+                await logEmail(serviceClient, {
+                  userId: session.user_id, sessionId: session.id,
+                  emailType: "followup_day3", messageId,
+                  status: ok ? "sent" : "failed", subject,
+                });
                 if (ok) emailsSent++;
                 else errors++;
               } else {
@@ -320,13 +358,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
           // Day 7
           if (daysSinceComplete >= 7 && !followup.completed_d7) {
             if (canSendFollowup14d) {
+              const subject = "A story about a founder in your exact situation";
               if (resendConfigured) {
-                const ok = await sendEmail(
-                  resendKey,
-                  userEmail,
-                  "A story about a founder in your exact situation",
+                const { ok, messageId } = await sendEmail(
+                  resendKey, userEmail, subject,
                   buildCompletedD7Html(userName, session.user_id)
                 );
+                await logEmail(serviceClient, {
+                  userId: session.user_id, sessionId: session.id,
+                  emailType: "followup_day7", messageId,
+                  status: ok ? "sent" : "failed", subject,
+                });
                 if (ok) emailsSent++;
                 else errors++;
               } else {
@@ -353,13 +395,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
               const roleTitle = String(
                 (sessionData.recommended_role as Record<string, unknown>)?.title ?? "Strategic Role"
               );
+              const subject = "6-month check-in — how did that hire work out?";
               if (resendConfigured) {
-                const ok = await sendEmail(
-                  resendKey,
-                  userEmail,
-                  "6-month check-in — how did that hire work out?",
+                const { ok, messageId } = await sendEmail(
+                  resendKey, userEmail, subject,
                   buildCompleted6moHtml(userName, roleTitle, session.id, session.user_id)
                 );
+                await logEmail(serviceClient, {
+                  userId: session.user_id, sessionId: session.id,
+                  emailType: "followup_6mo", messageId,
+                  status: ok ? "sent" : "failed", subject,
+                });
                 if (ok) emailsSent++;
                 else errors++;
               } else {
@@ -380,13 +426,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
           // Day 1 (24h after last activity)
           if (daysSinceUpdate >= 1 && !followup.abandoned_d1) {
             if (canSendAbandoned) {
+              const subject = "You're partway through your PROFIT discovery — finish in 4 minutes";
               if (resendConfigured) {
-                const ok = await sendEmail(
-                  resendKey,
-                  userEmail,
-                  "You're partway through your PROFIT discovery — finish in 4 minutes",
+                const { ok, messageId } = await sendEmail(
+                  resendKey, userEmail, subject,
                   buildAbandonedD1Html(userName, session.id, session.user_id)
                 );
+                await logEmail(serviceClient, {
+                  userId: session.user_id, sessionId: session.id,
+                  emailType: "followup_abandoned_day1", messageId,
+                  status: ok ? "sent" : "failed", subject,
+                });
                 if (ok) emailsSent++;
                 else errors++;
               } else {
@@ -399,13 +449,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
           // Day 3
           if (daysSinceUpdate >= 3 && !followup.abandoned_d3) {
             if (canSendAbandoned) {
+              const subject = "Still thinking about your next hire? Let's talk";
               if (resendConfigured) {
-                const ok = await sendEmail(
-                  resendKey,
-                  userEmail,
-                  "Still thinking about your next hire? Let's talk",
+                const { ok, messageId } = await sendEmail(
+                  resendKey, userEmail, subject,
                   buildAbandonedD3Html(userName, session.user_id)
                 );
+                await logEmail(serviceClient, {
+                  userId: session.user_id, sessionId: session.id,
+                  emailType: "followup_abandoned_day3", messageId,
+                  status: ok ? "sent" : "failed", subject,
+                });
                 if (ok) emailsSent++;
                 else errors++;
               } else {

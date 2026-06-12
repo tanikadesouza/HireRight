@@ -551,6 +551,44 @@ export async function getTagUsageCounts(): Promise<Map<string, number>> {
 }
 
 // ---------------------------------------------------------------------------
+// Email log
+// ---------------------------------------------------------------------------
+
+export interface EmailLogEntry {
+  id: string;
+  user_id: string;
+  session_id: string | null;
+  email_type: string;
+  resend_message_id: string | null;
+  status: string;
+  metadata: Record<string, unknown>;
+  sent_at: string | null;
+  created_at: string;
+}
+
+/**
+ * Returns all email log entries for a given session, newest first.
+ * Admin-only — RLS enforces this.
+ */
+export async function getEmailLogForSession(
+  sessionId: string
+): Promise<{ data: EmailLogEntry[] | null; error: string | null }> {
+  try {
+    const supabase = untyped(await createClient());
+    const { data, error } = await supabase
+      .from("hr_email_log")
+      .select("id, user_id, session_id, email_type, resend_message_id, status, metadata, sent_at, created_at")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false });
+
+    if (error) return { data: null, error: "Failed to load email log" };
+    return { data: data as EmailLogEntry[], error: null };
+  } catch {
+    return { data: null, error: "Failed to load email log" };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
