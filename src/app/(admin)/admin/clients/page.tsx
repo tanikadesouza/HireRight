@@ -1,9 +1,13 @@
 // src/app/(admin)/admin/clients/page.tsx
-// Admin clients list — shows all registered users with session counts and tags.
+// Admin clients list — shows all registered users with session counts, tags, and tag filter.
 
 import Link from "next/link";
-import { getAllUsers, getAllSessions } from "@/lib/services/admin";
-import type { AdminUser, AdminSession } from "@/lib/services/admin";
+import { getAllUsers, getAllSessions, getTags, getAllUserTagsMap } from "@/lib/services/admin";
+import type { AdminUser, AdminSession, AdminTag } from "@/lib/services/admin";
+
+interface AdminClientsPageProps {
+  searchParams: Promise<{ tag?: string }>;
+}
 
 function formatDate(dateString: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -13,14 +17,20 @@ function formatDate(dateString: string) {
   }).format(new Date(dateString));
 }
 
-export default async function AdminClientsPage() {
-  const [{ data: users }, { data: sessions }] = await Promise.all([
-    getAllUsers(),
-    getAllSessions(),
-  ]);
+export default async function AdminClientsPage({ searchParams }: AdminClientsPageProps) {
+  const { tag: tagFilter } = await searchParams;
+
+  const [{ data: users }, { data: sessions }, { data: allTags }, userTagsMap] =
+    await Promise.all([
+      getAllUsers(),
+      getAllSessions(),
+      getTags(),
+      getAllUserTagsMap(),
+    ]);
 
   const allUsers: AdminUser[] = users ?? [];
   const allSessions: AdminSession[] = sessions ?? [];
+  const tags: AdminTag[] = allTags ?? [];
 
   // Build session counts per user
   const sessionCountMap = new Map<string, { total: number; completed: number }>();
@@ -32,8 +42,16 @@ export default async function AdminClientsPage() {
     });
   }
 
-  const clientUsers = allUsers.filter((u) => u.role !== "admin");
+  let clientUsers = allUsers.filter((u) => u.role !== "admin");
   const adminUsers = allUsers.filter((u) => u.role === "admin");
+
+  // Apply tag filter
+  if (tagFilter) {
+    clientUsers = clientUsers.filter((u) => {
+      const userTags = userTagsMap.get(u.id) ?? [];
+      return userTags.some((t) => t.name === tagFilter);
+    });
+  }
 
   return (
     <div className="p-8">
@@ -42,6 +60,7 @@ export default async function AdminClientsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             {clientUsers.length} registered user{clientUsers.length !== 1 ? "s" : ""}
+            {tagFilter ? ` tagged "${tagFilter}"` : ""}
           </p>
         </div>
         <Link
@@ -78,6 +97,40 @@ export default async function AdminClientsPage() {
         </div>
       </div>
 
+      {/* Tag filter */}
+      {tags.length > 0 && (
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Filter by tag:
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/clients"
+              className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                !tagFilter
+                  ? "bg-gray-900 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              All
+            </Link>
+            {tags.map((tag) => (
+              <Link
+                key={tag.id}
+                href={`/admin/clients?tag=${encodeURIComponent(tag.name)}`}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  tagFilter === tag.name
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                {tag.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Clients table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mb-8">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -86,7 +139,7 @@ export default async function AdminClientsPage() {
 
         {clientUsers.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-gray-400">
-            No clients yet.
+            {tagFilter ? `No clients tagged "${tagFilter}".` : "No clients yet."}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -95,6 +148,9 @@ export default async function AdminClientsPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Tags
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     Sessions
@@ -114,6 +170,7 @@ export default async function AdminClientsPage() {
                 {clientUsers.map((user) => {
                   const counts = sessionCountMap.get(user.id) ?? { total: 0, completed: 0 };
                   const hasCompleted = counts.completed > 0;
+                  const userTags = userTagsMap.get(user.id) ?? [];
                   return (
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
@@ -123,6 +180,23 @@ export default async function AdminClientsPage() {
                           </p>
                           <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {userTags.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {userTags.map((tag) => (
+                              <Link
+                                key={tag.id}
+                                href={`/admin/clients?tag=${encodeURIComponent(tag.name)}`}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                              >
+                                {tag.name}
+                              </Link>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-gray-700">{counts.total}</td>
                       <td className="px-6 py-4">

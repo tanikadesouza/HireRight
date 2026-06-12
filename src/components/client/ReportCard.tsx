@@ -485,7 +485,7 @@ export function ReportCard({ report, sessionId }: ReportCardProps) {
       )}
 
       {/* CTA Buttons */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3" data-print-hide>
         <a
           href="https://calendly.com/hireright/discovery"
           target="_blank"
@@ -498,11 +498,13 @@ export function ReportCard({ report, sessionId }: ReportCardProps) {
         <AssistantBookButton roleTitle={role.title} />
         <button
           type="button"
-          disabled
-          className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-gray-300 text-gray-500 font-medium rounded-xl text-sm cursor-not-allowed"
-          title="Coming soon"
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-xl text-sm hover:bg-gray-50 transition-colors"
         >
-          Download PDF
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Save as PDF
         </button>
         <ShareReportModal sessionId={sessionId} roleTitle={role.title} />
       </div>

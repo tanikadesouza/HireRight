@@ -71,3 +71,52 @@
     text-decoration: none;
   }
 }
+
+@media print {
+  /* Hide nav, CTAs, and interactive elements when printing the report */
+  nav,
+  header,
+  footer,
+  [data-print-hide],
+  button,
+  a[href^="https://calendly"],
+  a[href^="mailto"] {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Expand all <details> sections so they print fully */
+  details {
+    display: block !important;
+  }
+
+  details > summary {
+    display: none !important;
+  }
+
+  details > *:not(summary) {
+    display: block !important;
+    border-top: none !important;
+  }
+
+  /* Force page breaks before major sections */
+  .space-y-6 > div:nth-child(4) {
+    page-break-before: auto;
+  }
+
+  /* Ensure borders render in print */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -374,6 +374,33 @@ export async function getUserTags(userId: string): Promise<{
   }
 }
 
+/**
+ * Returns a Map of userId → AdminTag[] for all users at once.
+ * Used by the admin clients page to avoid N+1 tag fetches.
+ */
+export async function getAllUserTagsMap(): Promise<Map<string, AdminTag[]>> {
+  try {
+    const supabase = untyped(await createClient());
+    const { data, error } = await supabase
+      .from("hr_user_tags")
+      .select("user_id, tag:hr_tags(id, name, description, created_at)");
+
+    if (error || !data) return new Map();
+
+    const map = new Map<string, AdminTag[]>();
+    for (const row of data as unknown as Array<{ user_id: string; tag: AdminTag | AdminTag[] }>) {
+      const tag = Array.isArray(row.tag) ? row.tag[0] : row.tag;
+      if (!tag) continue;
+      const existing = map.get(row.user_id) ?? [];
+      existing.push(tag);
+      map.set(row.user_id, existing);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Bulk email
 // ---------------------------------------------------------------------------
