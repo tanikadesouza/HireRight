@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { saveFinancialModel } from "@/lib/services/reports";
 
 interface FinancialCalculatorProps {
   suggestedSalary?: string; // e.g. "$60,000–$75,000" from report
@@ -45,13 +44,17 @@ export function FinancialCalculator({ suggestedSalary, sessionId }: FinancialCal
     }
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      saveFinancialModel(sessionId, {
-        base_salary: baseSalary,
-        benefits_pct: benefitsPct,
-        tools_cost: toolsCost,
-        mgmt_hours: mgmtHours,
-        your_hourly_rate: yourHourlyRate,
-        expected_revenue: expectedRevenue,
+      fetch(`/api/reports/${sessionId}/financial-model`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base_salary: baseSalary,
+          benefits_pct: benefitsPct,
+          tools_cost: toolsCost,
+          mgmt_hours: mgmtHours,
+          your_hourly_rate: yourHourlyRate,
+          expected_revenue: expectedRevenue,
+        }),
       });
     }, 1500);
     return () => {
