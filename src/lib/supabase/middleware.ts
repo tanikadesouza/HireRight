@@ -36,18 +36,31 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes — allow through
+  // Public routes — allow through (no authentication required)
   const publicPaths = [
+    // Static / marketing
     "/",
     "/about",
     "/method",
     "/privacy",
+    // Auth flows
     "/login",
     "/signup",
     "/forgot-password",
     "/reset-password",
     "/auth/callback",
     "/api/auth/signout",
+    // Public content
+    "/resources",
+    "/success-stories",
+    "/office-hours",
+    // Shared report view (token-based, no account needed)
+    "/shared",
+    // Email opt-out (arrives from email link, user may not be signed in)
+    "/unsubscribe",
+    "/api/unsubscribe",
+    // Referral attribution redirect
+    "/r",
   ];
 
   const isPublicPath =
