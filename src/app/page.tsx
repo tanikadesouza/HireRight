@@ -63,6 +63,24 @@ export default function LandingPage() {
           <span className="font-bold text-gray-900 text-lg tracking-tight">HireRight</span>
           <div className="flex items-center gap-3">
             <Link
+              href="/success-stories"
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 hidden sm:block"
+            >
+              Stories
+            </Link>
+            <Link
+              href="/resources"
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 hidden sm:block"
+            >
+              Resources
+            </Link>
+            <Link
+              href="/office-hours"
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 hidden md:block"
+            >
+              Office Hours
+            </Link>
+            <Link
               href="/login"
               className="text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5"
             >

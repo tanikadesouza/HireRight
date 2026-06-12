@@ -34,6 +34,7 @@ interface FollupState {
   completed_d1?: string | null;
   completed_d3?: string | null;
   completed_d7?: string | null;
+  completed_6mo?: string | null;
   abandoned_d1?: string | null;
   abandoned_d3?: string | null;
 }
@@ -124,6 +125,27 @@ function buildCompletedD7Html(name: string): string {
   </div>`;
 }
 
+function buildCompleted6moHtml(name: string, roleTitle: string, sessionId: string): string {
+  const newSessionUrl = `${APP_URL}/discovery`;
+  const calendlyUrl = "https://calendly.com/hireright/discovery";
+  const reportUrl = `${APP_URL}/reports/${sessionId}`;
+  return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+    <div style="background:#1d4ed8;padding:20px 32px"><p style="color:#fff;font-weight:700;margin:0;font-size:16px">HireRight</p></div>
+    <div style="padding:32px">
+      <p style="color:#374151;font-size:15px;margin:0 0 16px">Hi ${name},</p>
+      <p style="color:#374151;font-size:15px;margin:0 0 16px">It's been 6 months since you completed your PROFIT discovery and mapped out your path to hiring a <strong>${roleTitle}</strong>.</p>
+      <p style="color:#374151;font-size:15px;margin:0 0 16px">How did it go? Did the hire work out? Are you on track, or do you need to course-correct?</p>
+      <p style="color:#374151;font-size:15px;margin:0 0 24px">I'd love to hear — reply to this email with an update, or book a quick 20-minute check-in call. If you're ready for your next hire, we can run another PROFIT session.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+        <a href="${calendlyUrl}" style="display:inline-block;background:#1d4ed8;color:#fff;font-weight:600;font-size:14px;padding:12px 20px;border-radius:10px;text-decoration:none;margin-right:8px">Book a Check-In Call</a>
+        <a href="${newSessionUrl}" style="display:inline-block;background:#fff;color:#374151;font-weight:600;font-size:14px;padding:12px 20px;border-radius:10px;text-decoration:none;border:1px solid #d1d5db">Start New PROFIT Session</a>
+      </div>
+      <p style="margin:16px 0 0"><a href="${reportUrl}" style="color:#6b7280;font-size:13px;text-decoration:underline">View your original report</a></p>
+    </div>
+    <div style="border-top:1px solid #f3f4f6;padding:16px 32px"><p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p></div>
+  </div>`;
+}
+
 function buildAbandonedD1Html(name: string, sessionId: string): string {
   const resumeUrl = `${APP_URL}/discovery/${sessionId}`;
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
@@ -174,10 +196,15 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   try {
     // -------------------------------------------------------------------------
-    // Load sessions needing follow-up: completed in last 14 days OR
-    // in_progress with last update > 24 hours ago
+    // Load sessions needing follow-up:
+    //   - completed in last 14 days (D1/D3/D7 sequences)
+    //   - completed ~6 months ago (180±10 days) and 6mo email not yet sent
+    //   - in_progress with last update > 24 hours ago (abandoned sequences)
     // -------------------------------------------------------------------------
-    const cutoffDate = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const cutoff14d = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const sixMoLow  = new Date(Date.now() - 190 * 24 * 60 * 60 * 1000).toISOString();
+    const sixMoHigh = new Date(Date.now() - 170 * 24 * 60 * 60 * 1000).toISOString();
+    const idleCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const { data: sessions, error: fetchError } = await serviceClient
       .from("hr_profit_sessions")
@@ -186,8 +213,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
         user:hr_users(email, full_name)
       `)
       .or(
-        `and(status.eq.completed,completed_at.gte.${cutoffDate}),` +
-        `and(status.eq.in_progress,updated_at.lte.${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()})`
+        `and(status.eq.completed,completed_at.gte.${cutoff14d}),` +
+        `and(status.eq.completed,completed_at.gte.${sixMoLow},completed_at.lte.${sixMoHigh}),` +
+        `and(status.eq.in_progress,updated_at.lte.${idleCutoff})`
       );
 
     if (fetchError) {
@@ -275,6 +303,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
               emailsSent++;
             }
             updates.completed_d7 = new Date().toISOString();
+          }
+
+          // 6-month check-in (US-033): send around day 180, skip if user already
+          // started a new session in the last 6 months (they're re-engaged).
+          if (daysSinceComplete >= 170 && !followup.completed_6mo) {
+            // Check for newer sessions by this user (skip if re-engaged)
+            const { data: newerSessions } = await serviceClient
+              .from("hr_profit_sessions")
+              .select("id")
+              .eq("user_id", session.user_id)
+              .gt("created_at", session.completed_at!)
+              .limit(1);
+
+            const alreadyReengaged = (newerSessions ?? []).length > 0;
+
+            if (!alreadyReengaged) {
+              const roleTitle = String(
+                (sessionData.recommended_role as Record<string, unknown>)?.title ?? "Strategic Role"
+              );
+              if (resendConfigured) {
+                const ok = await sendEmail(
+                  resendKey,
+                  userEmail,
+                  "6-month check-in — how did that hire work out?",
+                  buildCompleted6moHtml(userName, roleTitle, session.id)
+                );
+                if (ok) emailsSent++;
+                else errors++;
+              } else {
+                emailsSent++;
+              }
+            }
+            // Mark as sent regardless (so we don't retry if they were re-engaged)
+            updates.completed_6mo = new Date().toISOString();
           }
         }
 

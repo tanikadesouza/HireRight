@@ -98,6 +98,104 @@ function OnboardingPlanSection({ plan }: { plan: OnboardingPlan }) {
   );
 }
 
+function JointReviewButton({ roleTitle }: { roleTitle: string }) {
+  const [open, setOpen] = useState(false);
+  const [coName, setCoName] = useState("");
+  const [coEmail, setCoEmail] = useState("");
+
+  // Build Calendly URL with prefilled custom answers for co-founder attendee.
+  // Calendly supports ?name=&email=&a1= (custom questions) in embed links.
+  function buildCalendlyUrl() {
+    const base = "https://calendly.com/hireright/joint-review";
+    const params = new URLSearchParams();
+    if (coName) params.set("a1", coName);   // custom question 1: co-founder name
+    if (coEmail) params.set("a2", coEmail); // custom question 2: co-founder email
+    const qs = params.toString();
+    return qs ? `${base}?${qs}` : base;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-2 px-5 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-xl text-sm hover:bg-gray-50 transition-colors"
+      >
+        Schedule Joint Review
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold text-gray-900">Schedule Joint Review</h3>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-5">
+              Review your{" "}
+              <span className="font-medium text-gray-700">{roleTitle}</span> roadmap with
+              your business partner or co-founder. Add their details so they&apos;ll be
+              included in the calendar invite (max 2 additional attendees).
+            </p>
+
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Co-founder / partner name <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={coName}
+                  onChange={(e) => setCoName(e.target.value)}
+                  placeholder="Alex Johnson"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Their email <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="email"
+                  value={coEmail}
+                  onChange={(e) => setCoEmail(e.target.value)}
+                  placeholder="alex@company.com"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <a
+              href={buildCalendlyUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="block w-full text-center py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-sm"
+            >
+              Choose a Time →
+            </a>
+            <p className="text-xs text-gray-400 text-center mt-2">
+              Confirmation sent to all attendees
+            </p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function AssistantBookButton({ roleTitle }: { roleTitle: string }) {
   const subject = encodeURIComponent("Please schedule: HireRight Strategic Hiring Debrief");
   const body = encodeURIComponent(
@@ -396,6 +494,7 @@ export function ReportCard({ report, sessionId }: ReportCardProps) {
         >
           Book a Call
         </a>
+        <JointReviewButton roleTitle={role.title} />
         <AssistantBookButton roleTitle={role.title} />
         <button
           type="button"
