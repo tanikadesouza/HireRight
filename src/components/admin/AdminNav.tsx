@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/admin/tags", label: "Tags" },
   { href: "/admin/bulk-email", label: "Bulk Email" },
   { href: "/admin/office-hours", label: "Office Hours" },
+  { href: "/admin/system", label: "System Health" },
 ];
 
 export function AdminNav() {

@@ -589,6 +589,77 @@ export async function getEmailLogForSession(
 }
 
 // ---------------------------------------------------------------------------
+// System health / observability
+// ---------------------------------------------------------------------------
+
+export interface JobRun {
+  id: string;
+  job_name: string;
+  status: "running" | "success" | "failure";
+  output: string | null;
+  error_message: string | null;
+  started_at: string;
+  completed_at: string | null;
+}
+
+/**
+ * Returns the most recent N cron job runs, newest first.
+ */
+export async function getRecentJobRuns(
+  limit = 20
+): Promise<{ data: JobRun[] | null; error: string | null }> {
+  try {
+    const supabase = untyped(await createClient());
+    const { data, error } = await supabase
+      .from("hr_job_runs")
+      .select("id, job_name, status, output, error_message, started_at, completed_at")
+      .order("started_at", { ascending: false })
+      .limit(limit);
+
+    if (error) return { data: null, error: "Failed to load job runs" };
+    return { data: data as JobRun[], error: null };
+  } catch {
+    return { data: null, error: "Failed to load job runs" };
+  }
+}
+
+/**
+ * Returns email log stats: total sent/failed by type in last 30 days.
+ */
+export async function getEmailLogStats(): Promise<{
+  data: Array<{ email_type: string; sent: number; failed: number }> | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = untyped(await createClient());
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabase
+      .from("hr_email_log")
+      .select("email_type, status")
+      .gte("created_at", cutoff);
+
+    if (error) return { data: null, error: "Failed to load email stats" };
+
+    const statsMap = new Map<string, { sent: number; failed: number }>();
+    for (const row of data as Array<{ email_type: string; status: string }>) {
+      const existing = statsMap.get(row.email_type) ?? { sent: 0, failed: 0 };
+      if (row.status === "sent") existing.sent++;
+      else if (row.status === "failed") existing.failed++;
+      statsMap.set(row.email_type, existing);
+    }
+
+    const result = Array.from(statsMap.entries())
+      .map(([email_type, counts]) => ({ email_type, ...counts }))
+      .sort((a, b) => b.sent + b.failed - (a.sent + a.failed));
+
+    return { data: result, error: null };
+  } catch {
+    return { data: null, error: "Failed to load email stats" };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
