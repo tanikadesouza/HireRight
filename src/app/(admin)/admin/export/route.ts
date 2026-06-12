@@ -40,9 +40,9 @@ export async function GET(req: NextRequest) {
   if (type === "users") {
     const { data: users } = await getAllUsers();
     const rows = [
-      toCSVRow(["id", "email", "full_name", "role", "created_at"]),
+      toCSVRow(["id", "email", "full_name", "company_name", "industry", "anonymous_mode", "role", "created_at"]),
       ...(users ?? []).map((u) =>
-        toCSVRow([u.id, u.email, u.full_name, u.role, u.created_at])
+        toCSVRow([u.id, u.email, u.full_name, u.company_name, u.industry, u.anonymous_mode ? "yes" : "no", u.role, u.created_at])
       ),
     ];
     return new NextResponse(rows.join("\n"), {
