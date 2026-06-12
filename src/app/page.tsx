@@ -133,6 +133,17 @@ export default function LandingPage() {
         <p className="text-xs text-gray-400 mt-4">
           No credit card required · Complete in ~10 minutes · Get your roadmap instantly
         </p>
+        <p className="text-xs text-gray-400 mt-2">
+          Prefer to talk it through?{" "}
+          <a
+            href="https://calendly.com/hireright/discovery"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-700 font-medium"
+          >
+            Book a call with Tanika →
+          </a>
+        </p>
       </section>
 
       {/* Social proof strip */}

@@ -54,6 +54,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [industry, setIndustry] = useState("");
   const [teamSize, setTeamSize] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [anonymousMode, setAnonymousMode] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
   function handleNext() {
@@ -64,8 +66,10 @@ export default function OnboardingPage() {
     setIsPending(true);
     try {
       const fd = new FormData();
+      if (!anonymousMode && companyName) fd.set("company_name", companyName);
       if (industry) fd.set("industry", industry);
       if (teamSize) fd.set("team_size", teamSize);
+      fd.set("anonymous_mode", String(anonymousMode));
       await saveOnboardingProfile(null, fd);
     } catch {
       // Non-fatal — profile save should not block discovery
@@ -138,6 +142,34 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-5 mb-8">
+              {/* Company name (optional, can be kept private) */}
+              <div>
+                <label
+                  htmlFor="companyName"
+                  className="block text-sm font-medium text-gray-700 mb-1.5"
+                >
+                  Company name <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="companyName"
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  disabled={anonymousMode}
+                  placeholder={anonymousMode ? "Kept private" : "e.g. Acme Consulting"}
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+                />
+                <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={anonymousMode}
+                    onChange={(e) => setAnonymousMode(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-500">Keep my company name private</span>
+                </label>
+              </div>
+
               <div>
                 <label
                   htmlFor="industry"

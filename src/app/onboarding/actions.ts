@@ -7,6 +7,7 @@ const ProfileSchema = z.object({
   company_name: z.string().max(200).optional(),
   industry: z.string().max(100).optional(),
   team_size: z.coerce.number().int().min(1).max(100000).optional(),
+  anonymous_mode: z.coerce.boolean().optional(),
 });
 
 export async function saveOnboardingProfile(
@@ -17,6 +18,7 @@ export async function saveOnboardingProfile(
     company_name: formData.get("company_name") || undefined,
     industry: formData.get("industry") || undefined,
     team_size: formData.get("team_size") || undefined,
+    anonymous_mode: formData.get("anonymous_mode") === "true" ? true : false,
   });
 
   if (!parsed.success) {

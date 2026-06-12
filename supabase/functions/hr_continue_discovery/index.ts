@@ -20,6 +20,126 @@ const ContinueDiscoverySchema = z.object({
   user_message: z.string().min(1).max(5000).trim(),
 });
 
+// ---------------------------------------------------------------------------
+// Industry-specific context addons (US-038)
+// Injected into system prompt based on user's onboarding profile.
+// ---------------------------------------------------------------------------
+const INDUSTRY_CONTEXT: Record<string, string> = {
+  "Law Firm": `
+INDUSTRY CONTEXT — LAW FIRM:
+- Reference "billable hours" when discussing productivity and role impact
+- Use legal role titles: associate, paralegal, legal admin, practice manager, business development director
+- When discussing team structure: ask about partner-to-associate ratios and client origination responsibilities
+- For salary benchmarking, use law firm market rates and note bonus structures common to legal (year-end discretionary)
+- Red flag: law firms often confuse "needing a lawyer" with needing operational capacity — probe whether the gap is legal skill or business process`,
+
+  "Marketing Agency": `
+INDUSTRY CONTEXT — MARKETING AGENCY:
+- Reference "retainer clients," "deliverables," and "account management" naturally
+- Use agency role titles: account manager, creative director, copywriter, media buyer, project manager, operations lead
+- When discussing capacity: ask about client load per team member and whether they're losing scope due to bandwidth
+- For salary: agency salaries are often below market but compensate with creative freedom and portfolio value — acknowledge this trade-off
+- Red flag: agencies often hire more creatives when what they actually need is an account manager or traffic manager`,
+
+  "Healthcare": `
+INDUSTRY CONTEXT — HEALTHCARE:
+- Reference "patient care," "compliance," "credentialing," and "EMR/EHR" naturally when relevant
+- Use healthcare role titles: practice manager, care coordinator, medical biller, front office lead, clinical operations director
+- When discussing team: ask about patient volume per provider and whether bottlenecks are clinical or administrative
+- For salary: note that clinical roles have licensing requirements that affect compensation floors
+- Red flag: HIPAA compliance and credentialing timelines mean hiring in healthcare has longer lead times — surface this in the Implement step`,
+
+  "Creative Agency": `
+INDUSTRY CONTEXT — CREATIVE AGENCY:
+- Reference "client briefs," "revisions," "project-based work," and "creative capacity" naturally
+- Use creative role titles: art director, brand strategist, production coordinator, creative project manager, studio manager
+- When discussing fractional vs. full-time: creative agencies often benefit from fractional for overflow capacity
+- For salary: creative roles often have flexible compensation (hourly, retainer, per-project) — explore what structure fits their model
+- Red flag: creative agencies often mistake client delivery problems for headcount problems — ask about workflow and tooling first`,
+
+  "Tech/Software": `
+INDUSTRY CONTEXT — TECH/SOFTWARE:
+- Reference "sprint," "product roadmap," "technical debt," and "engineering capacity" naturally when relevant
+- Use tech role titles: engineering manager, product manager, DevOps engineer, QA lead, customer success manager, growth lead
+- When discussing fractional vs. full-time: technical roles rarely work well fractionally unless highly specialized (security, data science, DevOps)
+- For salary: tech salaries are highly location-dependent — ask where the hire will be based and whether they're open to remote
+- Red flag: founders often want to hire engineers when the bottleneck is actually product management or QA`,
+
+  "Real Estate": `
+INDUSTRY CONTEXT — REAL ESTATE:
+- Reference "transaction volume," "listings," "closings," and "lead pipeline" naturally
+- Use real estate role titles: transaction coordinator, showing agent, buyer's agent, operations manager, marketing coordinator, ISA (inside sales agent)
+- When discussing capacity: ask about number of active listings/transactions and how many the founder is personally managing
+- For salary: real estate support roles often mix base + per-transaction bonus — explore what structure motivates performance
+- Red flag: real estate teams often hire another agent before they have operational systems in place — ask about SOP status`,
+
+  "Financial Services": `
+INDUSTRY CONTEXT — FINANCIAL SERVICES:
+- Reference "AUM," "client relationships," "compliance," and "fiduciary duties" naturally when relevant
+- Use financial services role titles: financial advisor, client service associate, operations manager, paraplanner, compliance officer, relationship manager
+- When discussing team: ask about clients-per-advisor ratio and whether bottlenecks are service delivery or business development
+- For salary: note that licensed roles (Series 65, CFP, CPA) command significant premiums over unlicensed
+- Red flag: RIA and broker-dealer compliance requirements affect who can perform certain functions — surface this early`,
+
+  "Business Consulting": `
+INDUSTRY CONTEXT — BUSINESS CONSULTING:
+- Reference "engagements," "client relationships," "deliverables," and "utilization rate" naturally
+- Use consulting role titles: senior consultant, engagement manager, practice lead, client success director, business development director, operations manager
+- When discussing team structure: ask about current billable utilization and whether the founder is still doing delivery work vs. business development
+- For salary: consulting compensation often includes performance bonus tied to revenue or utilization — explore this structure
+- Red flag: solo consultants often need an operations or delivery person before they need another consultant`,
+
+  "Education": `
+INDUSTRY CONTEXT — EDUCATION:
+- Reference "enrollment," "curriculum," "student outcomes," and "instructor capacity" naturally
+- Use education role titles: instructional designer, enrollment coordinator, student success manager, operations director, curriculum developer, marketing lead
+- When discussing team: ask about student-to-instructor ratio and where dropout or churn is happening
+- For salary: education often pays below market — explore benefits, mission alignment, and flexible work as compensating factors
+- Red flag: education businesses often conflate low enrollment with a marketing problem when it's actually a student success/retention problem`,
+};
+
+// ---------------------------------------------------------------------------
+// Build dynamic system prompt (US-038 industry context, US-040 anonymous mode)
+// ---------------------------------------------------------------------------
+interface UserProfile {
+  industry?: string | null;
+  team_size?: number | null;
+  company_name?: string | null;
+  anonymous_mode?: boolean | null;
+}
+
+function buildSystemPrompt(basePrompt: string, profile: UserProfile): string {
+  const parts: string[] = [basePrompt];
+
+  // Industry-specific context (US-038)
+  if (profile.industry && INDUSTRY_CONTEXT[profile.industry]) {
+    parts.push(INDUSTRY_CONTEXT[profile.industry]);
+  }
+
+  // User profile context
+  const contextLines: string[] = [];
+  if (profile.team_size) {
+    contextLines.push(`Current team size: ${profile.team_size} people`);
+  }
+  if (!profile.anonymous_mode && profile.company_name) {
+    contextLines.push(`Company: ${profile.company_name}`);
+  }
+  if (profile.industry) {
+    contextLines.push(`Industry: ${profile.industry}`);
+  }
+
+  if (contextLines.length > 0) {
+    parts.push(`\nUSER PROFILE (already known — do NOT ask about this again):\n${contextLines.join("\n")}`);
+  }
+
+  // Anonymous mode (US-040)
+  if (profile.anonymous_mode) {
+    parts.push(`\nPRIVACY: This user has requested anonymous mode. Do NOT ask for or reference their company name. Use "your business" or "your company" instead.`);
+  }
+
+  return parts.join("\n");
+}
+
 const PROFIT_SYSTEM_PROMPT = `You are a strategic hiring advisor for HireRight, guiding a service business founder through the PROFIT method — a 5-step strategic discovery process.
 
 The 5 steps are:
@@ -68,6 +188,13 @@ When recommending a role in step F, always include a salary context statement:
 - Frame it: "To attract a [Role] at the caliber you're describing — someone who can [specific outcome from their F step answers] — expect to offer $X–$Y base. If your budget is lower, here's how to structure the offer competitively: [equity/flexibility/growth path]."
 - If the role is highly specialized or niche: "Salary data for [role] varies widely. I'd recommend consulting with HireRight for custom benchmarking — but a reasonable starting assumption is $X–$Y based on your industry and the scope you described."
 - Always pair the range with: role type (full-time vs. fractional), benefits context (health insurance, PTO norms), and one "offer structure" tip.
+
+MULTI-ROLE HIRING (US-039):
+During the Pinpoint step, if the founder mentions needing to hire multiple roles simultaneously:
+- Acknowledge it: "It sounds like you have a few positions to fill. Let's get strategic about this — which role is most urgent for your business right now? We'll build a roadmap for that one first, then tackle the others."
+- Complete the full PROFIT process for the priority role.
+- After completion, if the founder wants to continue with the next role, include "suggest_next_role": true in the completion JSON.
+- Cap at 3 roles per session. If they mention a 4th, say: "For 4+ roles, I'd recommend booking a strategic planning call so we can map this across your full org chart at once."
 
 COMPLETION:
 When all 5 steps are complete AND you have sufficient detail across all areas, respond with a completion signal. Your final message should close naturally (e.g., "You've given me everything I need to build your strategic hiring roadmap. Generating it now...") followed by this JSON block on its own line:
@@ -136,7 +263,8 @@ function detectCompletion(text: string): boolean {
 async function callAnthropicWithRetry(
   messages: Array<{ role: string; content: string }>,
   serviceClient: ReturnType<typeof createClient>,
-  sessionId: string
+  sessionId: string,
+  systemPrompt: string = PROFIT_SYSTEM_PROMPT
 ): Promise<{ text: string; inputTokens: number; outputTokens: number } | { error: Response }> {
   const MAX_RETRIES = 3;
   let attempt = 0;
@@ -155,7 +283,7 @@ async function callAnthropicWithRetry(
         body: JSON.stringify({
           model: "claude-sonnet-4-5", // as of 2025-01
           max_tokens: 1024,
-          system: PROFIT_SYSTEM_PROMPT,
+          system: systemPrompt,
           messages,
         }),
       });
@@ -265,6 +393,22 @@ Deno.serve(
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
 
+    // 5b. Fetch user profile for industry-aware AI (US-038) and anonymous mode (US-040)
+    // Non-fatal — discovery continues with base prompt if profile fetch fails
+    let userProfile: UserProfile = {};
+    try {
+      const { data: profileData } = await supabase
+        .from("hr_users")
+        .select("industry, team_size, company_name, anonymous_mode")
+        .eq("id", user.id)
+        .single();
+      if (profileData) {
+        userProfile = profileData as UserProfile;
+      }
+    } catch {
+      // Non-fatal
+    }
+
     // 6. Fetch and verify session (must belong to user, must be in_progress)
     const { data: session, error: sessionError } = await supabase
       .from("hr_profit_sessions")
@@ -308,11 +452,13 @@ Deno.serve(
     // Add the new user message
     conversationHistory.push({ role: "user", content: body.user_message });
 
-    // 8. Call Anthropic Claude API
+    // 8. Call Anthropic Claude API with personalized system prompt (US-038/040)
+    const dynamicSystemPrompt = buildSystemPrompt(PROFIT_SYSTEM_PROMPT, userProfile);
     const aiResult = await callAnthropicWithRetry(
       conversationHistory,
       serviceClient,
-      body.session_id
+      body.session_id,
+      dynamicSystemPrompt
     );
 
     if ("error" in aiResult) {

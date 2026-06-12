@@ -47,6 +47,19 @@ export default async function DiscoveryPage() {
         </div>
 
         <StartDiscoveryButton />
+
+        {/* US-041: Book-a-call escape hatch */}
+        <p className="mt-6 text-xs text-gray-400">
+          Prefer to talk it through?{" "}
+          <a
+            href="https://calendly.com/hireright/discovery"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Book a call with Tanika instead →
+          </a>
+        </p>
       </div>
     </main>
   );
