@@ -575,6 +575,40 @@ Deno.serve(
       .update(updatePayload)
       .eq("id", body.session_id);
 
+    // 13b. Referral completion tracking (US-026) — when a session completes,
+    // advance the referring user's hr_referrals row from signed_up → completed_session.
+    // Use service_role for the cross-user update (RLS would block the user-scoped client).
+    if (isComplete) {
+      try {
+        // Count how many completed sessions this user has (including this one)
+        const { count } = await serviceClient
+          .from("hr_profit_sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("status", "completed");
+
+        // Only on their FIRST completion (count === 1 after this update)
+        if (count !== null && count <= 1) {
+          const { data: refRow } = await serviceClient
+            .from("hr_referrals")
+            .select("id")
+            .eq("referee_id", user.id)
+            .eq("status", "signed_up")
+            .limit(1)
+            .single();
+
+          if (refRow) {
+            await serviceClient
+              .from("hr_referrals")
+              .update({ status: "completed_session" })
+              .eq("id", refRow.id);
+          }
+        }
+      } catch {
+        // Non-fatal — referral tracking should never block discovery completion
+      }
+    }
+
     if (updateError) {
       await logError(serviceClient, {
         functionName: "hr_continue_discovery",

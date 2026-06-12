@@ -15,6 +15,10 @@ export default async function AccountSettingsPage() {
       <AccountSettingsClient
         email={profile.email ?? ""}
         fullName={profile.full_name ?? ""}
+        companyName={profile.company_name ?? ""}
+        industry={profile.industry ?? ""}
+        teamSize={profile.team_size ?? null}
+        anonymousMode={profile.anonymous_mode ?? false}
       />
     </main>
   );

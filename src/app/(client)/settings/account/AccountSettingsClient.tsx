@@ -8,12 +8,36 @@ import { updateProfileAction, changePasswordAction, deleteAccountAction } from "
 
 type ActionState = { error?: string; success?: boolean } | null;
 
+const INDUSTRY_OPTIONS = [
+  "Business Consulting",
+  "Marketing Agency",
+  "Law Firm",
+  "Healthcare",
+  "Creative Agency",
+  "Tech/Software",
+  "Real Estate",
+  "Financial Services",
+  "Education",
+  "Other",
+];
+
 interface Props {
   email: string;
   fullName: string;
+  companyName: string;
+  industry: string;
+  teamSize: number | null;
+  anonymousMode: boolean;
 }
 
-export default function AccountSettingsClient({ email, fullName }: Props) {
+export default function AccountSettingsClient({
+  email,
+  fullName,
+  companyName,
+  industry,
+  teamSize,
+  anonymousMode,
+}: Props) {
   const [profileState, profileAction, profilePending] = useActionState<ActionState, FormData>(
     updateProfileAction,
     null
@@ -29,11 +53,13 @@ export default function AccountSettingsClient({ email, fullName }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* UM-6: Update profile */}
+      {/* Profile */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Profile</CardTitle>
-          <CardDescription>Update your display name</CardDescription>
+          <CardDescription>
+            These details are used to personalise your AI hiring advisor.
+          </CardDescription>
         </CardHeader>
         <form action={profileAction}>
           <CardContent className="space-y-4">
@@ -44,14 +70,24 @@ export default function AccountSettingsClient({ email, fullName }: Props) {
             )}
             {profileState?.success && (
               <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-                Profile updated successfully.
+                Profile updated. Your AI advisor will use these details in future sessions.
               </div>
             )}
+
+            {/* Email (read-only) */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} disabled className="bg-gray-50 cursor-not-allowed" />
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                disabled
+                className="bg-gray-50 cursor-not-allowed"
+              />
               <p className="text-xs text-gray-500">Email cannot be changed here.</p>
             </div>
+
+            {/* Full name */}
             <div className="space-y-2">
               <Label htmlFor="full_name">Full name</Label>
               <Input
@@ -63,6 +99,74 @@ export default function AccountSettingsClient({ email, fullName }: Props) {
                 autoComplete="name"
               />
             </div>
+
+            {/* Company name + anonymous toggle */}
+            <div className="space-y-2">
+              <Label htmlFor="company_name">
+                Company name{" "}
+                <span className="text-gray-400 font-normal text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="company_name"
+                name="company_name"
+                type="text"
+                defaultValue={anonymousMode ? "" : companyName}
+                placeholder={anonymousMode ? "Kept private" : "e.g. Acme Consulting"}
+                disabled={anonymousMode}
+                className={anonymousMode ? "bg-gray-50 cursor-not-allowed" : ""}
+              />
+              <label className="flex items-center gap-2 cursor-pointer select-none mt-1">
+                <input
+                  type="hidden"
+                  name="anonymous_mode"
+                  value={anonymousMode ? "true" : "false"}
+                  id="anonymous_mode_hidden"
+                />
+                <AnonymousToggle defaultChecked={anonymousMode} />
+                <span className="text-xs text-gray-500">Keep my company name private</span>
+              </label>
+            </div>
+
+            {/* Industry */}
+            <div className="space-y-2">
+              <Label htmlFor="industry">
+                Industry{" "}
+                <span className="text-gray-400 font-normal text-xs">(optional)</span>
+              </Label>
+              <select
+                id="industry"
+                name="industry"
+                defaultValue={industry}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              >
+                <option value="">Select an industry</option>
+                {INDUSTRY_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500">
+                Helps the AI use industry-specific terminology and role benchmarks.
+              </p>
+            </div>
+
+            {/* Team size */}
+            <div className="space-y-2">
+              <Label htmlFor="team_size">
+                Current team size{" "}
+                <span className="text-gray-400 font-normal text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="team_size"
+                name="team_size"
+                type="number"
+                min="1"
+                max="100000"
+                defaultValue={teamSize ?? ""}
+                placeholder="e.g. 5"
+              />
+            </div>
           </CardContent>
           <CardFooter>
             <Button type="submit" disabled={profilePending}>
@@ -72,7 +176,7 @@ export default function AccountSettingsClient({ email, fullName }: Props) {
         </form>
       </Card>
 
-      {/* UM-5: Change password */}
+      {/* Change password */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Change password</CardTitle>
@@ -132,7 +236,7 @@ export default function AccountSettingsClient({ email, fullName }: Props) {
         </form>
       </Card>
 
-      {/* UM-7: Delete account */}
+      {/* Delete account */}
       <Card className="border-red-200">
         <CardHeader>
           <CardTitle className="text-lg text-red-700">Delete account</CardTitle>
@@ -162,16 +266,37 @@ export default function AccountSettingsClient({ email, fullName }: Props) {
             </div>
           </CardContent>
           <CardFooter>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={deletePending}
-            >
+            <Button type="submit" variant="destructive" disabled={deletePending}>
               {deletePending ? "Deleting..." : "Delete my account"}
             </Button>
           </CardFooter>
         </form>
       </Card>
     </div>
+  );
+}
+
+// Controlled checkbox that also updates the hidden input so the server action
+// receives the correct anonymous_mode value on submit.
+function AnonymousToggle({ defaultChecked }: { defaultChecked: boolean }) {
+  return (
+    <input
+      type="checkbox"
+      defaultChecked={defaultChecked}
+      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+      onChange={(e) => {
+        const hidden = document.getElementById(
+          "anonymous_mode_hidden"
+        ) as HTMLInputElement | null;
+        if (hidden) hidden.value = e.target.checked ? "true" : "false";
+        const companyInput = document.getElementById(
+          "company_name"
+        ) as HTMLInputElement | null;
+        if (companyInput) {
+          companyInput.disabled = e.target.checked;
+          companyInput.placeholder = e.target.checked ? "Kept private" : "e.g. Acme Consulting";
+        }
+      }}
+    />
   );
 }

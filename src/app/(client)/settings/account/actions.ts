@@ -5,15 +5,30 @@ import { redirect } from "next/navigation";
 
 export async function updateProfileAction(_prevState: unknown, formData: FormData) {
   const fullName = formData.get("full_name") as string;
+  const companyName = (formData.get("company_name") as string | null)?.trim() || null;
+  const industry = (formData.get("industry") as string | null) || null;
+  const teamSizeRaw = formData.get("team_size") as string | null;
+  const anonymousMode = formData.get("anonymous_mode") === "true";
 
   if (!fullName || fullName.trim().length === 0) {
     return { error: "Full name is required" };
   }
 
+  const teamSize = teamSizeRaw ? parseInt(teamSizeRaw, 10) : null;
+  if (teamSizeRaw && (isNaN(teamSize!) || teamSize! < 1 || teamSize! > 100000)) {
+    return { error: "Team size must be a number between 1 and 100,000" };
+  }
+
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const { error } = await updateProfile({ full_name: fullName.trim() });
+  const { error } = await updateProfile({
+    full_name: fullName.trim(),
+    company_name: anonymousMode ? null : companyName,
+    industry: industry || null,
+    team_size: teamSize,
+    anonymous_mode: anonymousMode,
+  });
 
   if (error) return { error: error.message };
   return { success: true };
