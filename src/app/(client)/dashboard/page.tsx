@@ -123,6 +123,12 @@ export default async function DashboardPage() {
                 Start New PROFIT Session
               </Link>
             )}
+            <Link
+              href="/referrals"
+              className="px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl text-sm font-medium text-gray-700 transition-colors"
+            >
+              Referrals
+            </Link>
             <form action="/api/auth/signout" method="POST">
               <button
                 type="submit"

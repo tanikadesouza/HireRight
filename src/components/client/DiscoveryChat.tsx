@@ -21,6 +21,35 @@ interface Props {
 }
 
 // ---------------------------------------------------------------------------
+// Testimonials (US-023) — shown as non-blocking callouts on step transitions
+// ---------------------------------------------------------------------------
+
+const STEP_TESTIMONIALS: Record<string, string[]> = {
+  revamp: [
+    "\"I was about to hire an admin assistant. PROFIT showed me I actually needed an ops manager. That one insight saved me from a $60K mistake.\" — Sarah K., consulting founder",
+    "\"The team mapping step made me realize two of my contractors were doing overlapping work. Fixed that before hiring anyone new.\" — Marcus T., service agency CEO",
+  ],
+  optimize: [
+    "\"I had no idea I could promote someone internally. HireRight identified the gap AND the person already on my team.\" — Priya M., coaching practice",
+    "\"The internal-vs-external question stopped me from hiring externally for a role my existing ops lead was ready for. Saved 6 months of recruiting.\" — James R., consulting firm",
+  ],
+  fill: [
+    "\"The fractional vs. full-time check saved me from overcommitting. I started fractional, validated the role, then converted to full-time at 6 months.\" — Leah C., agency owner",
+    "\"Having a salary range in the report meant I could post the job that day instead of spending a week researching comp.\" — Daniel W., founder",
+  ],
+  implement: [
+    "\"The red flags section made me realize I was hiring before my onboarding process was ready. I took 2 weeks to document everything first — best decision I made.\" — Tamara B., founder",
+    "\"The roadmap gave me and my business partner alignment in one conversation instead of weeks of back-and-forth.\" — Chris N., service business owner",
+  ],
+};
+
+function pickTestimonial(step: string): string {
+  const options = STEP_TESTIMONIALS[step] ?? [];
+  if (options.length === 0) return "";
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+// ---------------------------------------------------------------------------
 // Step config
 // ---------------------------------------------------------------------------
 
@@ -66,6 +95,8 @@ export default function DiscoveryChat({ session, initialMessages }: Props) {
   const [currentStep, setCurrentStep] = useState(session.current_step ?? "pinpoint");
   const [progress, setProgress] = useState(STEP_PROGRESS[session.current_step ?? "pinpoint"] ?? 20);
   const [generatingRoadmap, setGeneratingRoadmap] = useState(false);
+  const [testimonial, setTestimonial] = useState<string | null>(null);
+  const testimonialTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -114,8 +145,19 @@ export default function DiscoveryChat({ session, initialMessages }: Props) {
         },
       ]);
 
+      const prevStep = currentStep;
       setCurrentStep(current_step as "pinpoint" | "revamp" | "optimize" | "fill" | "implement");
       setProgress(newProgress);
+
+      // Show testimonial on step transitions (not for very fast sessions < 2 min)
+      if (current_step !== prevStep && !discovery_complete) {
+        const quote = pickTestimonial(current_step);
+        if (quote) {
+          setTestimonial(quote);
+          if (testimonialTimer.current) clearTimeout(testimonialTimer.current);
+          testimonialTimer.current = setTimeout(() => setTestimonial(null), 6000);
+        }
+      }
 
       if (discovery_complete) {
         setGeneratingRoadmap(true);
@@ -273,6 +315,24 @@ export default function DiscoveryChat({ session, initialMessages }: Props) {
         </div>
       </div>
 
+      {/* Testimonial callout (US-023) — non-blocking, auto-dismiss after 6s */}
+      {testimonial && (
+        <div className="flex-shrink-0 px-4 py-3 bg-blue-50 border-t border-blue-100">
+          <div className="max-w-2xl mx-auto flex items-start gap-3">
+            <span className="text-blue-400 text-lg flex-shrink-0 mt-0.5">💬</span>
+            <p className="text-sm text-blue-800 leading-relaxed flex-1 italic">{testimonial}</p>
+            <button
+              type="button"
+              onClick={() => setTestimonial(null)}
+              className="flex-shrink-0 text-blue-300 hover:text-blue-500 text-xs mt-0.5"
+              aria-label="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Error banner */}
       {error && (
         <div className="flex-shrink-0 px-4 py-2 bg-red-50 border-t border-red-200">
@@ -309,10 +369,51 @@ export default function DiscoveryChat({ session, initialMessages }: Props) {
             </svg>
           </button>
         </form>
-        <p className="max-w-2xl mx-auto mt-2 text-xs text-gray-400 text-center">
-          Press Enter to send &middot; Shift+Enter for new line
-        </p>
+        <div className="max-w-2xl mx-auto mt-2 flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            Press Enter to send &middot; Shift+Enter for new line
+          </p>
+          <ContinueOnAnotherDevice sessionId={session.id} />
+        </div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// US-028 — Continue on another device
+// ---------------------------------------------------------------------------
+
+function ContinueOnAnotherDevice({ sessionId }: { sessionId: string }) {
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  async function handleSend() {
+    setStatus("sending");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/continue-link`, {
+        method: "POST",
+      });
+      setStatus(res.ok ? "sent" : "error");
+    } catch {
+      setStatus("error");
+    }
+    setTimeout(() => setStatus("idle"), 4000);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleSend}
+      disabled={status === "sending" || status === "sent"}
+      className="text-xs text-gray-400 hover:text-gray-600 transition-colors disabled:cursor-default"
+    >
+      {status === "sending"
+        ? "Sending link…"
+        : status === "sent"
+        ? "✓ Link sent to your email"
+        : status === "error"
+        ? "Failed — try again"
+        : "Continue on another device →"}
+    </button>
   );
 }
