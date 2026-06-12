@@ -92,6 +92,10 @@ export default async function UnsubscribePage({ searchParams }: UnsubscribePageP
             HireRight
           </Link>
           {" "}— Strategic Hiring Clarity
+          {" · "}
+          <Link href="/privacy" className="hover:text-gray-600">
+            Privacy Policy
+          </Link>
         </p>
       </div>
     </main>

@@ -357,6 +357,7 @@ export default function LandingPage() {
                   </a>
                 </li>
                 <li><Link href="/referrals" className="hover:text-gray-900 transition-colors">Refer a Founder</Link></li>
+                <li><Link href="/privacy" className="hover:text-gray-900 transition-colors">Privacy Policy</Link></li>
               </ul>
             </div>
           </div>
