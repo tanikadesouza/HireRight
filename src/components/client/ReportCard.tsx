@@ -346,7 +346,7 @@ export function ReportCard({ report, sessionId, shareToken }: ReportCardProps) {
         </summary>
         <div className="px-6 pb-6 pt-0 border-t border-gray-100">
           <div className="pt-5">
-            <FinancialCalculator suggestedSalary={role.salary_range} />
+            <FinancialCalculator suggestedSalary={role.salary_range} sessionId={sessionId} />
           </div>
         </div>
       </details>

@@ -57,6 +57,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.7,
     },
+    {
+      url: `${APP_URL}/privacy`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
   ];
 
   const articlePages: MetadataRoute.Sitemap = ARTICLE_SLUGS.map((slug) => ({

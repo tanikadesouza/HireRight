@@ -36,6 +36,15 @@ export interface OnboardingPlan {
   month_3: string;
 }
 
+export interface FinancialModel {
+  base_salary: number;
+  benefits_pct: number;
+  tools_cost: number;
+  mgmt_hours: number;
+  your_hourly_rate: number;
+  expected_revenue: number;
+}
+
 export interface ReportData {
   executive_summary: string;
   business_goal: string;
@@ -50,6 +59,7 @@ export interface ReportData {
   job_description: string | null;
   interview_questions: InterviewQuestions | null;
   onboarding_plan: OnboardingPlan | null;
+  financial_model?: FinancialModel | null;
 }
 
 export interface HireRightReport {
@@ -233,6 +243,34 @@ export async function getReportByShareToken(shareToken: string): Promise<{
     };
   } catch {
     return { data: null, error: "Failed to load report" };
+  }
+}
+
+/**
+ * Merges financial model inputs into the report's report_data JSONB field.
+ * Called with a debounce from FinancialCalculator when the user adjusts inputs.
+ * Admin can see the saved values in the session detail view.
+ */
+export async function saveFinancialModel(
+  sessionId: string,
+  model: FinancialModel
+): Promise<{ error: string | null }> {
+  try {
+    const _supabase = await createClient();
+    const { data: { user } } = await _supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated" };
+
+    const supabase = untyped(_supabase);
+    const { error } = await supabase.rpc("hr_save_financial_model", {
+      p_session_id: sessionId,
+      p_user_id: user.id,
+      p_model: model,
+    });
+
+    if (error) return { error: "Failed to save financial model" };
+    return { error: null };
+  } catch {
+    return { error: "Failed to save financial model" };
   }
 }
 

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { saveFinancialModel } from "@/lib/services/reports";
 
 interface FinancialCalculatorProps {
   suggestedSalary?: string; // e.g. "$60,000–$75,000" from report
+  sessionId: string;
 }
 
 function parseSalaryMidpoint(range: string | undefined): number {
@@ -22,7 +24,7 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export function FinancialCalculator({ suggestedSalary }: FinancialCalculatorProps) {
+export function FinancialCalculator({ suggestedSalary, sessionId }: FinancialCalculatorProps) {
   const defaultSalary = parseSalaryMidpoint(suggestedSalary);
 
   const [baseSalary, setBaseSalary] = useState(defaultSalary);
@@ -31,6 +33,31 @@ export function FinancialCalculator({ suggestedSalary }: FinancialCalculatorProp
   const [mgmtHours, setMgmtHours] = useState(5);
   const [yourHourlyRate, setYourHourlyRate] = useState(150);
   const [expectedRevenue, setExpectedRevenue] = useState(0);
+
+  // Debounced save — persists inputs to report_data for admin review (US-012)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveFinancialModel(sessionId, {
+        base_salary: baseSalary,
+        benefits_pct: benefitsPct,
+        tools_cost: toolsCost,
+        mgmt_hours: mgmtHours,
+        your_hourly_rate: yourHourlyRate,
+        expected_revenue: expectedRevenue,
+      });
+    }, 1500);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [sessionId, baseSalary, benefitsPct, toolsCost, mgmtHours, yourHourlyRate, expectedRevenue]);
 
   const salaryWarning = baseSalary < 15000;
 
