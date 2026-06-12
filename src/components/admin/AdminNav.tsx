@@ -7,7 +7,9 @@ const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard" },
   { href: "/admin/sessions", label: "Sessions" },
   { href: "/admin/clients", label: "Clients" },
+  { href: "/admin/tags", label: "Tags" },
   { href: "/admin/bulk-email", label: "Bulk Email" },
+  { href: "/admin/office-hours", label: "Office Hours" },
 ];
 
 export function AdminNav() {

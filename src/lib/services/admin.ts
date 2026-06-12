@@ -474,6 +474,67 @@ export async function getUsersByTag(tagName: string): Promise<{
   }
 }
 
+/**
+ * Renames an existing tag.
+ */
+export async function renameTag(
+  tagId: string,
+  newName: string
+): Promise<{ error: string | null }> {
+  try {
+    const supabase = untyped(await createClient());
+    const { error } = await supabase
+      .from("hr_tags")
+      .update({ name: newName.trim() })
+      .eq("id", tagId);
+
+    if (error) return { error: "Failed to rename tag" };
+    return { error: null };
+  } catch {
+    return { error: "Failed to rename tag" };
+  }
+}
+
+/**
+ * Deletes a tag and removes it from all users (ON DELETE CASCADE handles hr_user_tags).
+ */
+export async function deleteTag(tagId: string): Promise<{ error: string | null }> {
+  try {
+    const supabase = untyped(await createClient());
+    const { error } = await supabase
+      .from("hr_tags")
+      .delete()
+      .eq("id", tagId);
+
+    if (error) return { error: "Failed to delete tag" };
+    return { error: null };
+  } catch {
+    return { error: "Failed to delete tag" };
+  }
+}
+
+/**
+ * Returns the number of users assigned to each tag (for the tags management page).
+ */
+export async function getTagUsageCounts(): Promise<Map<string, number>> {
+  try {
+    const supabase = untyped(await createClient());
+    const { data, error } = await supabase
+      .from("hr_user_tags")
+      .select("tag_id");
+
+    if (error || !data) return new Map();
+
+    const counts = new Map<string, number>();
+    for (const row of data as Array<{ tag_id: string }>) {
+      counts.set(row.tag_id, (counts.get(row.tag_id) ?? 0) + 1);
+    }
+    return counts;
+  } catch {
+    return new Map();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
