@@ -93,7 +93,8 @@ export async function sendBulkEmailAction(
             subject,
             html: buildBulkEmailHtml(
               recipient.full_name ?? "there",
-              personalizedBody
+              personalizedBody,
+              recipient.user_id
             ),
           }),
         });
@@ -120,7 +121,10 @@ export async function sendBulkEmailAction(
   };
 }
 
-function buildBulkEmailHtml(name: string, bodyText: string): string {
+function buildBulkEmailHtml(name: string, bodyText: string, userId: string): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://hireright.app";
+  const unsubUrl = `${appUrl}/api/unsubscribe?uid=${userId}&type=marketing`;
+
   const paragraphs = bodyText
     .split(/\n\n+/)
     .map((p) => `<p style="margin: 0 0 16px; color: #374151; font-size: 15px; line-height: 1.6;">${p.replace(/\n/g, "<br/>")}</p>`)
@@ -138,11 +142,9 @@ function buildBulkEmailHtml(name: string, bodyText: string): string {
       <p style="color: #374151; font-size: 15px; margin: 0 0 16px;">Hi ${name},</p>
       ${paragraphs}
     </div>
-    <div style="border-top: 1px solid #f3f4f6; padding: 16px 32px;">
-      <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-        You're receiving this because you're a HireRight client.
-        <a href="#" style="color: #6b7280;">Unsubscribe</a>
-      </p>
+    <div style="border-top: 1px solid #f3f4f6; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <p style="color: #9ca3af; font-size: 12px; margin: 0;">HireRight — Strategic Hiring Clarity</p>
+      <a href="${unsubUrl}" style="color: #9ca3af; font-size: 12px; text-decoration: underline;">Unsubscribe</a>
     </div>
   </div>
 </body>
