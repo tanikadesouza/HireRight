@@ -1,7 +1,10 @@
 // src/components/admin/AdminNav.tsx
 // Navigation sidebar for the admin section.
 
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard" },
@@ -13,6 +16,8 @@ const NAV_ITEMS = [
 ];
 
 export function AdminNav() {
+  const pathname = usePathname();
+
   return (
     <nav className="w-56 flex-shrink-0 bg-gray-900 min-h-screen p-4">
       <div className="mb-6">
@@ -22,16 +27,23 @@ export function AdminNav() {
         </span>
       </div>
       <ul className="space-y-1">
-        {NAV_ITEMS.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className="flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
-            >
-              {item.label}
-            </Link>
-          </li>
-        ))}
+        {NAV_ITEMS.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                }`}
+              >
+                {item.label}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
