@@ -258,7 +258,7 @@ function detectCompletion(text: string): boolean {
 /**
  * Calls Anthropic Claude API with exponential backoff on 429.
  * Follows contract from claude.md §6.5.
- * model: claude-sonnet-4-5 // as of 2025-01
+ * model: claude-sonnet-4-6 // as of 2026-06
  */
 async function callAnthropicWithRetry(
   messages: Array<{ role: string; content: string }>,
@@ -281,7 +281,7 @@ async function callAnthropicWithRetry(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-5", // as of 2025-01
+          model: "claude-sonnet-4-6", // as of 2026-06
           max_tokens: 1024,
           system: systemPrompt,
           messages,

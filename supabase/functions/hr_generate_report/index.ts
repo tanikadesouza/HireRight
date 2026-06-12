@@ -66,7 +66,7 @@ Respond with ONLY the JSON object — no prose, no markdown fences.`;
 
 /**
  * Calls Anthropic Claude API with exponential backoff on 429.
- * model: claude-sonnet-4-5 // as of 2025-01
+ * model: claude-sonnet-4-6 // as of 2026-06
  */
 async function callAnthropicWithRetry(
   conversationText: string,
@@ -88,7 +88,7 @@ async function callAnthropicWithRetry(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-5", // as of 2025-01
+          model: "claude-sonnet-4-6", // as of 2026-06
           max_tokens: 2048,
           system: SYNTHESIS_SYSTEM_PROMPT,
           messages: [
