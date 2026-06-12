@@ -419,7 +419,83 @@ Deno.serve(
       // Non-fatal — report was saved, continue
     }
 
-    // 15. Advance referral status: signed_up → completed_session (US-026)
+    // 15. Send immediate "report ready" email (session_completion) — fire-and-forget
+    try {
+      const resendKey = Deno.env.get("RESEND_API_KEY");
+      if (resendKey && !resendKey.startsWith("placeholder")) {
+        // Fetch notification preferences (opt-out check)
+        const { data: userRow } = await serviceClient
+          .from("hr_users")
+          .select("full_name, notification_prefs")
+          .eq("id", user.id)
+          .single();
+
+        const prefs = (userRow as { notification_prefs?: Record<string, unknown> } | null)
+          ?.notification_prefs ?? {};
+        const optedOut = prefs["session_complete"] === false;
+
+        if (!optedOut) {
+          const firstName =
+            (userRow as { full_name?: string | null } | null)?.full_name?.split(" ")[0] ?? "there";
+          const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://hireright.app";
+          const reportUrl = `${appUrl}/report/${body.session_id}`;
+          const unsubUrl = `${appUrl}/unsubscribe?uid=${user.id}`;
+          const subject = "Your PROFIT hiring report is ready";
+
+          const sendRes = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${resendKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "HireRight <noreply@hireright.app>",
+              to: user.email,
+              subject,
+              html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+                <div style="background:#1d4ed8;padding:20px 32px"><p style="color:#fff;font-weight:700;margin:0;font-size:16px">HireRight</p></div>
+                <div style="padding:32px">
+                  <p style="color:#374151;font-size:15px;margin:0 0 16px">Hi ${firstName},</p>
+                  <p style="color:#374151;font-size:15px;margin:0 0 16px">Your PROFIT discovery session is complete and your strategic hiring report is ready to view.</p>
+                  <p style="color:#374151;font-size:15px;margin:0 0 8px">Your report includes:</p>
+                  <ul style="color:#374151;font-size:15px;margin:0 0 24px;padding-left:20px">
+                    <li style="margin-bottom:6px">Recommended role &amp; responsibilities</li>
+                    <li style="margin-bottom:6px">Ready-to-post job description</li>
+                    <li style="margin-bottom:6px">Interview questions tailored to your needs</li>
+                    <li style="margin-bottom:6px">30/60/90-day onboarding plan</li>
+                    <li>Financial Reality Check calculator</li>
+                  </ul>
+                  <a href="${reportUrl}" style="display:inline-block;background:#1d4ed8;color:#fff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:10px;text-decoration:none">View Your Report →</a>
+                </div>
+                <div style="border-top:1px solid #f3f4f6;padding:16px 32px">
+                  <p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity · <a href="${unsubUrl}" style="color:#9ca3af">Unsubscribe</a></p>
+                </div>
+              </div>`,
+            }),
+          });
+
+          const sendJson = sendRes.ok ? await sendRes.json().catch(() => ({})) : {};
+          const messageId: string | null =
+            (sendJson as { id?: string })?.id ?? null;
+
+          // Log to hr_email_log (best-effort, never throw)
+          const emailStatus = sendRes.ok ? "sent" : "failed";
+          await serviceClient.from("hr_email_log").insert({
+            user_id: user.id,
+            session_id: body.session_id,
+            email_type: "session_completion",
+            resend_message_id: messageId,
+            status: emailStatus,
+            metadata: { subject },
+            sent_at: emailStatus === "sent" ? new Date().toISOString() : null,
+          }).catch(() => {/* ignore */});
+        }
+      }
+    } catch {
+      // Fire-and-forget — never block report delivery on notification email
+    }
+
+    // 16. Advance referral status: signed_up → completed_session (US-026)
     //     Only fires for the referee's first completed session (status check prevents duplicates).
     const { error: referralError } = await serviceClient
       .from("hr_referrals")
@@ -496,9 +572,9 @@ Deno.serve(
       }
     }
 
-    // 16. Advance referral status complete
+    // 17. Advance referral status complete
 
-    // 17. Track tokens in hr_ai_usage
+    // 18. Track tokens in hr_ai_usage
     const { error: usageError } = await serviceClient
       .from("hr_ai_usage")
       .insert({
@@ -521,7 +597,7 @@ Deno.serve(
       // Non-fatal — continue
     }
 
-    // 18. Return report_data
+    // 19. Return report_data
     return new Response(
       JSON.stringify({ data: reportData }),
       {
