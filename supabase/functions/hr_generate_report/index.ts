@@ -419,7 +419,86 @@ Deno.serve(
       // Non-fatal — report was saved, continue
     }
 
-    // 15. Track tokens in hr_ai_usage
+    // 15. Advance referral status: signed_up → completed_session (US-026)
+    //     Only fires for the referee's first completed session (status check prevents duplicates).
+    const { error: referralError } = await serviceClient
+      .from("hr_referrals")
+      .update({ status: "completed_session", completed_at: new Date().toISOString() })
+      .eq("referee_id", user.id)
+      .eq("status", "signed_up");
+
+    if (referralError) {
+      await logError(serviceClient, {
+        functionName: "hr_generate_report",
+        errorMessage: "Failed to advance referral status",
+        errorDetail: referralError.message,
+        severity: "warn",
+        userId: user.id,
+        inputParams: { session_id: body.session_id },
+      });
+      // Non-fatal — referral tracking should never block report delivery
+    } else {
+      // Send referrer notification email if the update touched any rows (first completion)
+      // Look up the referral row we just updated to find the referrer
+      try {
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        if (resendKey && !resendKey.startsWith("placeholder")) {
+          const { data: referralRows } = await serviceClient
+            .from("hr_referrals")
+            .select("referrer_id")
+            .eq("referee_id", user.id)
+            .eq("status", "completed_session")
+            .limit(1);
+
+          const referrerId = (referralRows as Array<{ referrer_id: string }> | null)?.[0]?.referrer_id;
+          if (referrerId) {
+            const { data: referrerRow } = await serviceClient
+              .from("hr_users")
+              .select("email, full_name")
+              .eq("id", referrerId)
+              .single();
+
+            const refereeName = user.user_metadata?.full_name ?? user.email ?? "a founder";
+            const referrerName = (referrerRow as { full_name: string | null; email: string } | null)?.full_name ?? "there";
+            const referrerEmail = (referrerRow as { full_name: string | null; email: string } | null)?.email;
+            const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://hireright.app";
+
+            if (referrerEmail) {
+              await fetch("https://api.resend.com/emails", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${resendKey}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  from: "HireRight <noreply@hireright.app>",
+                  to: referrerEmail,
+                  subject: `Your referral just completed their PROFIT discovery!`,
+                  html: `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+                    <div style="background:#1d4ed8;padding:20px 32px"><p style="color:#fff;font-weight:700;margin:0;font-size:16px">HireRight</p></div>
+                    <div style="padding:32px">
+                      <p style="color:#374151;font-size:15px;margin:0 0 16px">Hi ${referrerName},</p>
+                      <p style="color:#374151;font-size:15px;margin:0 0 16px">Great news — <strong>${refereeName}</strong>, who signed up through your referral link, just completed their first PROFIT discovery session.</p>
+                      <p style="color:#374151;font-size:15px;margin:0 0 24px">Thank you for spreading the word about HireRight. Your referral has made a real difference for a fellow founder.</p>
+                      <a href="${appUrl}/referrals" style="display:inline-block;background:#1d4ed8;color:#fff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:10px;text-decoration:none">View Your Referrals →</a>
+                    </div>
+                    <div style="border-top:1px solid #f3f4f6;padding:16px 32px">
+                      <p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p>
+                    </div>
+                  </div>`,
+                }),
+              });
+            }
+          }
+        }
+      } catch {
+        // Fire-and-forget — never block report delivery on referral email
+      }
+    }
+
+    // 16. Advance referral status complete
+
+    // 17. Track tokens in hr_ai_usage
     const { error: usageError } = await serviceClient
       .from("hr_ai_usage")
       .insert({
@@ -442,7 +521,7 @@ Deno.serve(
       // Non-fatal — continue
     }
 
-    // 16. Return report_data
+    // 18. Return report_data
     return new Response(
       JSON.stringify({ data: reportData }),
       {
