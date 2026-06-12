@@ -180,6 +180,33 @@ export async function getHiringStage(sessionId: string): Promise<{
 }
 
 /**
+ * Returns a map of sessionId → HiringStageRecord for a list of session IDs.
+ * Used by the dashboard to show hiring progress without N+1 queries.
+ */
+export async function getHiringStagesMap(
+  sessionIds: string[]
+): Promise<Map<string, HiringStageRecord>> {
+  if (sessionIds.length === 0) return new Map();
+  try {
+    const supabase = untyped(await createClient());
+    const { data, error } = await supabase
+      .from("hr_hiring_stage")
+      .select("id, session_id, user_id, stage, notes, updated_at, created_at")
+      .in("session_id", sessionIds);
+
+    if (error || !data) return new Map();
+
+    const map = new Map<string, HiringStageRecord>();
+    for (const row of data as HiringStageRecord[]) {
+      map.set(row.session_id, row);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+/**
  * Upserts the hiring stage for a session.
  */
 export async function upsertHiringStage(

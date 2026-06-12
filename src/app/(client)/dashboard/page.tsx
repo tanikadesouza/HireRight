@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getUser } from "@/lib/services/auth";
 import { getSessions } from "@/lib/services/profit-sessions";
+import { getHiringStagesMap, HIRING_STAGE_LABELS } from "@/lib/services/reports";
 import type { ProfitSession } from "@/lib/services/profit-sessions";
+import type { HiringStageRecord } from "@/lib/services/reports";
 
 const STEP_LABELS: Record<string, string> = {
   pinpoint: "Pinpoint Goals",
@@ -29,7 +31,13 @@ function formatDate(dateString: string) {
   }).format(new Date(dateString));
 }
 
-function SessionCard({ session }: { session: ProfitSession }) {
+function SessionCard({
+  session,
+  hiringStage,
+}: {
+  session: ProfitSession;
+  hiringStage?: HiringStageRecord | null;
+}) {
   const isCompleted = session.status === "completed";
   const isInProgress = session.status === "in_progress";
   const sessionData = session.session_data as Record<string, unknown>;
@@ -63,6 +71,15 @@ function SessionCard({ session }: { session: ProfitSession }) {
           {roleRecommended && (
             <p className="text-sm font-medium text-gray-900 mb-1 truncate">
               Role: {roleRecommended}
+            </p>
+          )}
+
+          {hiringStage && (
+            <p className="text-xs font-medium text-blue-700 mb-1">
+              Hiring stage:{" "}
+              <span className="bg-blue-100 px-1.5 py-0.5 rounded">
+                {HIRING_STAGE_LABELS[hiringStage.stage as keyof typeof HIRING_STAGE_LABELS] ?? hiringStage.stage}
+              </span>
             </p>
           )}
 
@@ -103,6 +120,12 @@ export default async function DashboardPage() {
   const { data: sessions } = await getSessions();
   const hasActiveSessions = sessions && sessions.length > 0;
   const hasInProgress = sessions?.some((s) => s.status === "in_progress");
+
+  // Fetch hiring stages for completed sessions
+  const completedSessionIds = (sessions ?? [])
+    .filter((s) => s.status === "completed")
+    .map((s) => s.id);
+  const hiringStagesMap = await getHiringStagesMap(completedSessionIds);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -164,7 +187,11 @@ export default async function DashboardPage() {
             </div>
             <div className="space-y-3">
               {sessions!.map((session) => (
-                <SessionCard key={session.id} session={session} />
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  hiringStage={hiringStagesMap.get(session.id) ?? null}
+                />
               ))}
             </div>
           </div>

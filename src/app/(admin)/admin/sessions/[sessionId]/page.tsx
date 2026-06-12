@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { getSessionWithUser, getNotes, getTags, getUserTags } from "@/lib/services/admin";
 import { getMessages } from "@/lib/services/profit-sessions";
+import { getHiringStage, HIRING_STAGE_LABELS } from "@/lib/services/reports";
 import { NoteForm } from "@/components/admin/NoteForm";
 import { TagManager } from "@/components/admin/TagManager";
 import type { AdminNote, AdminTag } from "@/lib/services/admin";
@@ -28,12 +29,13 @@ export default async function AdminSessionDetailPage({
 }: AdminSessionDetailProps) {
   const { sessionId } = await params;
 
-  const [sessionResult, notesResult, tagsResult, messagesResult] =
+  const [sessionResult, notesResult, tagsResult, messagesResult, hiringStageResult] =
     await Promise.all([
       getSessionWithUser(sessionId),
       getNotes(sessionId),
       getTags(),
       getMessages(sessionId),
+      getHiringStage(sessionId),
     ]);
 
   const session = sessionResult.data;
@@ -46,6 +48,7 @@ export default async function AdminSessionDetailPage({
     : { data: [], error: null };
   const userTags: AdminTag[] = userTagsResult.data ?? [];
   const messages = messagesResult.data ?? [];
+  const hiringStage = hiringStageResult.data;
 
   if (!session) {
     return (
@@ -114,6 +117,14 @@ export default async function AdminSessionDetailPage({
               <dt className="text-gray-400">Completed</dt>
               <dd className="font-medium text-gray-800">
                 {formatDate(session.completed_at)}
+              </dd>
+            </div>
+          )}
+          {hiringStage && (
+            <div>
+              <dt className="text-gray-400">Hiring Stage</dt>
+              <dd className="font-medium text-gray-800">
+                {HIRING_STAGE_LABELS[hiringStage.stage as keyof typeof HIRING_STAGE_LABELS] ?? hiringStage.stage}
               </dd>
             </div>
           )}
