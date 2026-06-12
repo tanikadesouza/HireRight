@@ -3,9 +3,10 @@
 // Middleware guards /admin/* routes (admin role required).
 
 import Link from "next/link";
-import { getSessionWithUser, getNotes, getTags } from "@/lib/services/admin";
+import { getSessionWithUser, getNotes, getTags, getUserTags } from "@/lib/services/admin";
 import { getMessages } from "@/lib/services/profit-sessions";
 import { NoteForm } from "@/components/admin/NoteForm";
+import { TagManager } from "@/components/admin/TagManager";
 import type { AdminNote, AdminTag } from "@/lib/services/admin";
 
 interface AdminSessionDetailProps {
@@ -38,6 +39,12 @@ export default async function AdminSessionDetailPage({
   const session = sessionResult.data;
   const notes: AdminNote[] = notesResult.data ?? [];
   const allTags: AdminTag[] = tagsResult.data ?? [];
+
+  // Fetch user's current tags (only if session found)
+  const userTagsResult = session?.user
+    ? await getUserTags(session.user.id)
+    : { data: [], error: null };
+  const userTags: AdminTag[] = userTagsResult.data ?? [];
   const messages = messagesResult.data ?? [];
 
   if (!session) {
@@ -151,27 +158,18 @@ export default async function AdminSessionDetailPage({
         )}
       </div>
 
-      {/* Client Tags */}
+      {/* Client Tags — interactive assign/remove/create */}
       {session.user && (
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
             Client Tags
           </h2>
-          {allTags.length === 0 ? (
-            <p className="text-sm text-gray-400">No tags configured yet.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {allTags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700"
-                  title={tag.description ?? undefined}
-                >
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-          )}
+          <TagManager
+            userId={session.user.id}
+            sessionId={sessionId}
+            allTags={allTags}
+            userTags={userTags}
+          />
         </div>
       )}
 

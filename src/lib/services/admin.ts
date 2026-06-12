@@ -348,6 +348,32 @@ export async function getAllUsers(): Promise<{
   }
 }
 
+/**
+ * Returns the tags currently assigned to a user.
+ */
+export async function getUserTags(userId: string): Promise<{
+  data: AdminTag[] | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = untyped(await createClient());
+    const { data, error } = await supabase
+      .from("hr_user_tags")
+      .select("tag:hr_tags(id, name, description, created_at)")
+      .eq("user_id", userId);
+
+    if (error) return { data: null, error: "Failed to load user tags" };
+
+    const tags = ((data ?? []) as unknown as Array<{ tag: AdminTag | AdminTag[] }>)
+      .map((row) => (Array.isArray(row.tag) ? row.tag[0] : row.tag))
+      .filter(Boolean) as AdminTag[];
+
+    return { data: tags, error: null };
+  } catch {
+    return { data: null, error: "Failed to load user tags" };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Bulk email
 // ---------------------------------------------------------------------------

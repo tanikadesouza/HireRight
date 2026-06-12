@@ -309,12 +309,66 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 py-8">
-        <div className="max-w-6xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4">
-          <span className="font-bold text-gray-700">HireRight</span>
-          <p className="text-sm text-gray-400">
-            Strategic hiring clarity for service business founders.
-          </p>
+      <footer className="border-t border-gray-100 bg-white py-12">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-10">
+            <div>
+              <p className="font-bold text-gray-900 mb-3">HireRight</p>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Strategic hiring clarity for service business founders — powered by the PROFIT method.
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Product
+              </p>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li><Link href="/signup" className="hover:text-gray-900 transition-colors">Get started free</Link></li>
+                <li><Link href="/login" className="hover:text-gray-900 transition-colors">Sign in</Link></li>
+                <li><Link href="/office-hours" className="hover:text-gray-900 transition-colors">Office Hours</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Learn
+              </p>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li><Link href="/resources" className="hover:text-gray-900 transition-colors">Resources</Link></li>
+                <li><Link href="/resources/profit-method-explained" className="hover:text-gray-900 transition-colors">The PROFIT Method</Link></li>
+                <li><Link href="/success-stories" className="hover:text-gray-900 transition-colors">Success Stories</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                Company
+              </p>
+              <ul className="space-y-2 text-sm text-gray-500">
+                <li>
+                  <a
+                    href="https://calendly.com/hireright/discovery"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-gray-900 transition-colors"
+                  >
+                    Book a Call
+                  </a>
+                </li>
+                <li><Link href="/referrals" className="hover:text-gray-900 transition-colors">Refer a Founder</Link></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-6 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-gray-400">
+              © {new Date().getFullYear()} HireRight. All rights reserved.
+            </p>
+            <p className="text-xs text-gray-400">
+              Built for founders who hire with intention.
+            </p>
+          </div>
         </div>
       </footer>
     </main>

@@ -18,8 +18,29 @@ const StartDiscoverySchema = z.object({
   session_source: z.string().max(200).optional(),
 });
 
-const FIRST_QUESTION =
+const DEFAULT_FIRST_QUESTION =
   "Let's start with the P in PROFIT — Pinpoint Goals. What business goal are you working toward right now? What transition or change are you navigating?";
+
+const INDUSTRY_FIRST_QUESTIONS: Record<string, string> = {
+  "Law Firm":
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your firm working toward right now? Are you looking to grow revenue, free up your time from delivery, or expand your practice area?",
+  "Marketing Agency":
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your agency working toward this year? Are you looking to grow your client base, increase margins, or free up capacity on your team?",
+  Healthcare:
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your practice working toward right now? Are you looking to expand patient capacity, streamline operations, or free up your clinical time?",
+  "Creative Agency":
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your studio working toward this year? Are you looking to grow revenue, take on more complex projects, or free up your creative bandwidth?",
+  "Tech/Software":
+    "Let's start with the P in PROFIT — Pinpoint Goals. What's the primary business goal your company is working toward this year? Are you focused on scaling, improving delivery speed, or freeing up founder capacity?",
+  "Real Estate":
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your real estate business working toward right now? Are you looking to grow transaction volume, expand your team, or free yourself from day-to-day operations?",
+  "Financial Services":
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your firm working toward this year? Are you looking to grow AUM, improve client service capacity, or free up your advisory time?",
+  "Business Consulting":
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your consulting practice working toward right now? Are you looking to grow revenue, increase your capacity for new clients, or step back from delivery?",
+  Education:
+    "Let's start with the P in PROFIT — Pinpoint Goals. What business goal is your organization working toward this year? Are you looking to grow enrollment, improve outcomes, or free up your time from operations?",
+};
 
 Deno.serve(
   withErrorHandler(async (req: Request): Promise<Response> => {
@@ -96,7 +117,25 @@ Deno.serve(
       );
     }
 
-    // 7. Create new session
+    // 7. Fetch user profile to personalise opening question (non-fatal)
+    let industry: string | null = null;
+    try {
+      const { data: profileData } = await supabase
+        .from("hr_users")
+        .select("industry")
+        .eq("id", user.id)
+        .single();
+      if (profileData) {
+        industry = (profileData as { industry: string | null }).industry ?? null;
+      }
+    } catch {
+      // Non-fatal — fall back to default
+    }
+
+    const firstQuestion =
+      (industry && INDUSTRY_FIRST_QUESTIONS[industry]) ?? DEFAULT_FIRST_QUESTION;
+
+    // 8. Create new session
     const sessionData: Record<string, unknown> = {};
     if (body.session_source) {
       sessionData.source = body.session_source;
@@ -125,12 +164,12 @@ Deno.serve(
       return safeError(req, 500, "Failed to create discovery session");
     }
 
-    // 8. Return 201 with session_id and first question
+    // 9. Return 201 with session_id and personalised first question
     return new Response(
       JSON.stringify({
         data: {
           session_id: newSession.id,
-          first_question: FIRST_QUESTION,
+          first_question: firstQuestion,
         },
       }),
       {

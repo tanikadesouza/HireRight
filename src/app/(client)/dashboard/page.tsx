@@ -129,6 +129,12 @@ export default async function DashboardPage() {
             >
               Referrals
             </Link>
+            <Link
+              href="/settings/account"
+              className="px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl text-sm font-medium text-gray-700 transition-colors"
+            >
+              Settings
+            </Link>
             <form action="/api/auth/signout" method="POST">
               <button
                 type="submit"
