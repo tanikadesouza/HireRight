@@ -68,6 +68,7 @@ function untyped(client: Awaited<ReturnType<typeof createClient>>): SupabaseClie
 export async function getAllSessions(filters?: {
   status?: string;
   tag?: string;
+  userId?: string;
 }): Promise<{ data: AdminSession[] | null; error: string | null }> {
   try {
     const supabase = await createClient();
@@ -83,6 +84,10 @@ export async function getAllSessions(filters?: {
 
     if (filters?.status && filters.status !== "all") {
       query = query.eq("status", filters.status);
+    }
+
+    if (filters?.userId) {
+      query = query.eq("user_id", filters.userId);
     }
 
     const { data, error } = await query;

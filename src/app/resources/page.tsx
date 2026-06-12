@@ -158,11 +158,22 @@ const GUIDES: Guide[] = [
   },
 ];
 
-const CATEGORIES = ["All", ...Array.from(new Set(ARTICLES.map((a) => a.category)))];
+const CATEGORIES = Array.from(new Set(ARTICLES.map((a) => a.category))).sort();
 
-export default function ResourcesPage() {
-  const featured = ARTICLES.filter((a) => a.featured);
-  const remaining = ARTICLES.filter((a) => !a.featured);
+interface ResourcesPageProps {
+  searchParams: Promise<{ category?: string }>;
+}
+
+export default async function ResourcesPage({ searchParams }: ResourcesPageProps) {
+  const { category: catFilter } = await searchParams;
+
+  const visibleArticles =
+    catFilter && catFilter !== "all"
+      ? ARTICLES.filter((a) => a.category === catFilter)
+      : ARTICLES;
+
+  const featured = visibleArticles.filter((a) => a.featured);
+  const remaining = visibleArticles.filter((a) => !a.featured);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -207,7 +218,41 @@ export default function ResourcesPage() {
           </p>
         </div>
 
+        {/* Category filter */}
+        <div className="flex flex-wrap items-center gap-2 mb-10">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-1">
+            Articles:
+          </span>
+          <Link
+            href="/resources"
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              !catFilter || catFilter === "all"
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            All ({ARTICLES.length})
+          </Link>
+          {CATEGORIES.map((cat) => {
+            const count = ARTICLES.filter((a) => a.category === cat).length;
+            return (
+              <Link
+                key={cat}
+                href={`/resources?category=${encodeURIComponent(cat)}`}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  catFilter === cat
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                {cat} ({count})
+              </Link>
+            );
+          })}
+        </div>
+
         {/* Featured articles */}
+        {featured.length > 0 && (
         <section className="mb-14">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">
             Featured Articles
@@ -240,11 +285,13 @@ export default function ResourcesPage() {
             ))}
           </div>
         </section>
+        )}
 
         {/* All articles */}
+        {remaining.length > 0 && (
         <section className="mb-14">
           <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-5">
-            All Articles
+            {catFilter && catFilter !== "all" ? `${catFilter} Articles` : "All Articles"}
           </h2>
           <div className="space-y-3">
             {remaining.map((article) => (
@@ -278,6 +325,7 @@ export default function ResourcesPage() {
             ))}
           </div>
         </section>
+        )}
 
         {/* Videos */}
         <section className="mb-14">

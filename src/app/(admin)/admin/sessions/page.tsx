@@ -14,20 +14,54 @@ const STATUS_OPTIONS = [
 ];
 
 interface SessionsPageProps {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; user?: string }>;
 }
 
 export default async function AdminSessionsPage({ searchParams }: SessionsPageProps) {
   const params = await searchParams;
   const statusFilter = params.status ?? "all";
+  const userFilter = params.user;
 
   const { data: sessions, error } = await getAllSessions({
     status: statusFilter === "all" ? undefined : statusFilter,
+    userId: userFilter,
   });
+
+  // Resolve user name for the filter banner (pull from first session result)
+  const filteredUser = userFilter && sessions && sessions.length > 0
+    ? sessions[0].user
+    : null;
+
+  // Build base href preserving user filter across status tabs
+  function tabHref(status: string) {
+    const p = new URLSearchParams();
+    if (status !== "all") p.set("status", status);
+    if (userFilter) p.set("user", userFilter);
+    const qs = p.toString();
+    return `/admin/sessions${qs ? `?${qs}` : ""}`;
+  }
 
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Sessions</h1>
+
+      {/* User filter banner */}
+      {userFilter && (
+        <div className="flex items-center gap-3 mb-5 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm">
+          <span className="text-blue-700">
+            Showing sessions for:{" "}
+            <span className="font-semibold">
+              {filteredUser?.full_name ?? filteredUser?.email ?? userFilter}
+            </span>
+          </span>
+          <Link
+            href="/admin/sessions"
+            className="ml-auto text-xs text-blue-600 hover:text-blue-800 font-medium underline"
+          >
+            Clear filter
+          </Link>
+        </div>
+      )}
 
       {/* Status filter tabs */}
       <div className="flex items-center gap-2 mb-6 flex-wrap">
@@ -36,7 +70,7 @@ export default async function AdminSessionsPage({ searchParams }: SessionsPagePr
           return (
             <Link
               key={opt.value}
-              href={`/admin/sessions${opt.value !== "all" ? `?status=${opt.value}` : ""}`}
+              href={tabHref(opt.value)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-gray-900 text-white"

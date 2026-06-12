@@ -124,9 +124,20 @@ const STORIES: Story[] = [
   },
 ];
 
-const INDUSTRIES = ["All", ...Array.from(new Set(STORIES.map((s) => s.industry)))];
+const INDUSTRIES = Array.from(new Set(STORIES.map((s) => s.industry))).sort();
 
-export default function SuccessStoriesPage() {
+interface SuccessStoriesPageProps {
+  searchParams: Promise<{ industry?: string }>;
+}
+
+export default async function SuccessStoriesPage({ searchParams }: SuccessStoriesPageProps) {
+  const { industry: industryFilter } = await searchParams;
+
+  const filteredStories =
+    industryFilter && industryFilter !== "all"
+      ? STORIES.filter((s) => s.industry === industryFilter)
+      : STORIES;
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Nav */}
@@ -165,7 +176,7 @@ export default function SuccessStoriesPage() {
         </div>
 
         {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-4 mb-12">
+        <div className="grid grid-cols-3 gap-4 mb-10">
           {[
             { value: "94%", label: "hired the right role (not just any role)" },
             { value: "3.2x", label: "average ROI within 12 months" },
@@ -181,9 +192,47 @@ export default function SuccessStoriesPage() {
           ))}
         </div>
 
+        {/* Industry filter */}
+        <div className="flex flex-wrap items-center gap-2 mb-8">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mr-1">
+            Filter by industry:
+          </span>
+          <Link
+            href="/success-stories"
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              !industryFilter || industryFilter === "all"
+                ? "bg-gray-900 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            All ({STORIES.length})
+          </Link>
+          {INDUSTRIES.map((ind) => {
+            const count = STORIES.filter((s) => s.industry === ind).length;
+            return (
+              <Link
+                key={ind}
+                href={`/success-stories?industry=${encodeURIComponent(ind)}`}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  industryFilter === ind
+                    ? "bg-blue-600 text-white"
+                    : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                {ind} ({count})
+              </Link>
+            );
+          })}
+        </div>
+
         {/* Stories grid */}
+        {filteredStories.length === 0 ? (
+          <div className="text-center py-16 text-gray-400 text-sm">
+            No stories in this industry yet.
+          </div>
+        ) : (
         <div className="space-y-6">
-          {STORIES.map((story, i) => (
+          {filteredStories.map((story) => (
             <article
               key={story.id}
               className="bg-white rounded-2xl border border-gray-200 overflow-hidden"
@@ -241,6 +290,7 @@ export default function SuccessStoriesPage() {
             </article>
           ))}
         </div>
+        )}
 
         {/* CTA */}
         <div className="mt-14 text-center bg-white rounded-2xl border border-gray-200 px-8 py-10">
