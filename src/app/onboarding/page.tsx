@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { saveOnboardingProfile } from "./actions";
 
 const INDUSTRY_OPTIONS = [
   "Business Consulting",
@@ -61,8 +62,14 @@ export default function OnboardingPage() {
 
   async function handleFinish() {
     setIsPending(true);
-    // Phase 2: save industry + teamSize to hr_users profile
-    // For now, redirect directly to discovery
+    try {
+      const fd = new FormData();
+      if (industry) fd.set("industry", industry);
+      if (teamSize) fd.set("team_size", teamSize);
+      await saveOnboardingProfile(null, fd);
+    } catch {
+      // Non-fatal — profile save should not block discovery
+    }
     router.push("/discovery");
   }
 
