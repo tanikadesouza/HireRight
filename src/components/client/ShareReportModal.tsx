@@ -5,9 +5,10 @@ import { useState, useRef, useEffect } from "react";
 interface ShareReportModalProps {
   sessionId: string;
   roleTitle: string;
+  shareToken?: string;
 }
 
-export function ShareReportModal({ sessionId, roleTitle }: ShareReportModalProps) {
+export function ShareReportModal({ sessionId, roleTitle, shareToken }: ShareReportModalProps) {
   const [open, setOpen] = useState(false);
   const [emails, setEmails] = useState("");
   const [message, setMessage] = useState("");
@@ -23,10 +24,16 @@ export function ShareReportModal({ sessionId, roleTitle }: ShareReportModalProps
     }
   }, [open]);
 
+  // Use public share URL (no account required) when a share token is available;
+  // fall back to the auth-required report URL.
   const shareUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/reports/${sessionId}`
-      : `/reports/${sessionId}`;
+      ? shareToken
+        ? `${window.location.origin}/shared/${shareToken}`
+        : `${window.location.origin}/reports/${sessionId}`
+      : shareToken
+        ? `/shared/${shareToken}`
+        : `/reports/${sessionId}`;
 
   const defaultMessage = `I just used the PROFIT method to map out my next strategic hire (${roleTitle}). Take a look and let me know what you think.`;
 

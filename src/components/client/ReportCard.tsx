@@ -9,6 +9,7 @@ import { ShareReportModal } from "./ShareReportModal";
 interface ReportCardProps {
   report: ReportData;
   sessionId: string;
+  shareToken?: string | null;
 }
 
 function RoleTypeBadge({ type }: { type: string }) {
@@ -212,7 +213,7 @@ function AssistantBookButton({ roleTitle }: { roleTitle: string }) {
   );
 }
 
-export function ReportCard({ report, sessionId }: ReportCardProps) {
+export function ReportCard({ report, sessionId, shareToken }: ReportCardProps) {
   const role = report.recommended_role;
 
   return (
@@ -506,7 +507,7 @@ export function ReportCard({ report, sessionId }: ReportCardProps) {
           </svg>
           Save as PDF
         </button>
-        <ShareReportModal sessionId={sessionId} roleTitle={role.title} />
+        <ShareReportModal sessionId={sessionId} roleTitle={role.title} shareToken={shareToken ?? undefined} />
       </div>
     </div>
   );

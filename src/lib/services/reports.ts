@@ -57,6 +57,7 @@ export interface HireRightReport {
   session_id: string;
   user_id: string;
   report_data: ReportData;
+  share_token: string;
   created_at: string;
 }
 
@@ -90,7 +91,7 @@ export async function getReport(sessionId: string): Promise<{
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("hr_reports")
-      .select("id, session_id, user_id, report_data, created_at")
+      .select("id, session_id, user_id, report_data, share_token, created_at")
       .eq("session_id", sessionId)
       .single();
 
@@ -203,6 +204,35 @@ export async function getHiringStagesMap(
     return map;
   } catch {
     return new Map();
+  }
+}
+
+/**
+ * Looks up a report by its public share token (no auth required).
+ * Calls the hr_get_report_by_share_token SECURITY DEFINER RPC so the anon
+ * Supabase client can bypass RLS. user_id is intentionally NOT returned.
+ */
+export async function getReportByShareToken(shareToken: string): Promise<{
+  data: Omit<HireRightReport, "user_id" | "share_token"> | null;
+  error: string | null;
+}> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await (supabase as unknown as SupabaseClient)
+      .rpc("hr_get_report_by_share_token", { p_token: shareToken });
+
+    if (error) return { data: null, error: "Failed to load report" };
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      return { data: null, error: null };
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+      data: row as Omit<HireRightReport, "user_id" | "share_token">,
+      error: null,
+    };
+  } catch {
+    return { data: null, error: "Failed to load report" };
   }
 }
 

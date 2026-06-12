@@ -38,6 +38,7 @@ export default async function ReportPage({ params }: ReportPageProps) {
   }
 
   const reportData = report?.report_data as ReportData | undefined;
+  const shareToken = report?.share_token ?? null;
   const roleTitle = reportData?.recommended_role?.title ?? "Your Hiring Roadmap";
   const confidenceScore = reportData?.confidence_score ?? null;
 
@@ -72,7 +73,7 @@ export default async function ReportPage({ params }: ReportPageProps) {
         {/* Report content */}
         {reportData ? (
           <>
-            <ReportCard report={reportData} sessionId={sessionId} />
+            <ReportCard report={reportData} sessionId={sessionId} shareToken={shareToken} />
             <div className="mt-6">
               <HiringTracker sessionId={sessionId} currentRecord={hiringStage} />
             </div>
