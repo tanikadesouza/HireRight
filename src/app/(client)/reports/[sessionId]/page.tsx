@@ -3,9 +3,10 @@
 
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/services/auth";
-import { getReport } from "@/lib/services/reports";
+import { getReport, getHiringStage } from "@/lib/services/reports";
 import { ReportCard } from "@/components/client/ReportCard";
 import { GenerateReportTrigger } from "@/components/client/GenerateReportTrigger";
+import { HiringTracker } from "@/components/client/HiringTracker";
 import type { ReportData } from "@/lib/services/reports";
 
 interface ReportPageProps {
@@ -18,7 +19,10 @@ export default async function ReportPage({ params }: ReportPageProps) {
   const user = await getUser();
   if (!user) redirect("/login");
 
-  const { data: report, error } = await getReport(sessionId);
+  const [{ data: report, error }, { data: hiringStage }] = await Promise.all([
+    getReport(sessionId),
+    getHiringStage(sessionId),
+  ]);
 
   if (error) {
     return (
@@ -67,7 +71,12 @@ export default async function ReportPage({ params }: ReportPageProps) {
 
         {/* Report content */}
         {reportData ? (
-          <ReportCard report={reportData} sessionId={sessionId} />
+          <>
+            <ReportCard report={reportData} sessionId={sessionId} />
+            <div className="mt-6">
+              <HiringTracker sessionId={sessionId} currentRecord={hiringStage} />
+            </div>
+          </>
         ) : (
           <GenerateReportTrigger sessionId={sessionId} />
         )}
