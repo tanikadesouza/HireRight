@@ -1,6 +1,6 @@
 "use server";
 import { getUser, signIn, updatePassword, signOut } from "@/lib/services/auth";
-import { updateProfile } from "@/lib/services/users";
+import { updateProfile, updateNotificationPreferences } from "@/lib/services/users";
 import { redirect } from "next/navigation";
 
 export async function updateProfileAction(_prevState: unknown, formData: FormData) {
@@ -61,6 +61,24 @@ export async function changePasswordAction(_prevState: unknown, formData: FormDa
   const { error } = await updatePassword(newPassword);
   if (error) return { error: error.message };
 
+  return { success: true };
+}
+
+export async function updateNotificationPrefsAction(
+  _prevState: unknown,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const user = await getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await updateNotificationPreferences({
+    session_complete: formData.get("session_complete") === "on",
+    followup_14d: formData.get("followup_14d") === "on",
+    followup_6mo: formData.get("followup_6mo") === "on",
+    marketing: formData.get("marketing") === "on",
+  });
+
+  if (error) return { error };
   return { success: true };
 }
 

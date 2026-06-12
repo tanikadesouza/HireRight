@@ -39,6 +39,13 @@ interface FollupState {
   abandoned_d3?: string | null;
 }
 
+interface NotificationPrefs {
+  session_complete?: boolean;
+  followup_14d?: boolean;
+  followup_6mo?: boolean;
+  marketing?: boolean;
+}
+
 interface SessionRow {
   id: string;
   user_id: string;
@@ -46,7 +53,11 @@ interface SessionRow {
   completed_at: string | null;
   updated_at: string;
   session_data: Record<string, unknown>;
-  user: { email: string; full_name: string | null } | null;
+  user: {
+    email: string;
+    full_name: string | null;
+    notification_preferences: NotificationPrefs | null;
+  } | null;
 }
 
 function daysSince(isoDate: string): number {
@@ -210,7 +221,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       .from("hr_profit_sessions")
       .select(`
         id, user_id, status, completed_at, updated_at, session_data,
-        user:hr_users(email, full_name)
+        user:hr_users(email, full_name, notification_preferences)
       `)
       .or(
         `and(status.eq.completed,completed_at.gte.${cutoff14d}),` +
@@ -239,6 +250,12 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       if (!userEmail) continue;
 
+      const prefs: NotificationPrefs = session.user?.notification_preferences ?? {};
+      // Default all prefs to true unless explicitly opted out
+      const canSendFollowup14d = prefs.followup_14d !== false;
+      const canSendFollowup6mo = prefs.followup_6mo !== false;
+      const canSendAbandoned   = canSendFollowup14d; // reuse 14d pref for abandoned recovery
+
       const sessionData = session.session_data ?? {};
       const followup: FollupState = (sessionData.followup as FollupState) ?? {};
       const updates: FollupState = {};
@@ -256,51 +273,57 @@ Deno.serve(async (req: Request): Promise<Response> => {
               (sessionData.recommended_role as Record<string, unknown>)?.title ?? "Strategic Role"
             );
 
-            if (resendConfigured) {
-              const ok = await sendEmail(
-                resendKey,
-                userEmail,
-                `Your HireRight Roadmap — ${roleTitle}`,
-                buildCompletedD1Html(userName, session.id, roleTitle)
-              );
-              if (ok) emailsSent++;
-              else errors++;
-            } else {
-              emailsSent++; // count as "would have sent"
+            if (canSendFollowup14d) {
+              if (resendConfigured) {
+                const ok = await sendEmail(
+                  resendKey,
+                  userEmail,
+                  `Your HireRight Roadmap — ${roleTitle}`,
+                  buildCompletedD1Html(userName, session.id, roleTitle)
+                );
+                if (ok) emailsSent++;
+                else errors++;
+              } else {
+                emailsSent++; // count as "would have sent"
+              }
             }
             updates.completed_d1 = new Date().toISOString();
           }
 
           // Day 3
           if (daysSinceComplete >= 3 && !followup.completed_d3) {
-            if (resendConfigured) {
-              const ok = await sendEmail(
-                resendKey,
-                userEmail,
-                "Quick check-in — are you moving forward with your hire?",
-                buildCompletedD3Html(userName, session.id)
-              );
-              if (ok) emailsSent++;
-              else errors++;
-            } else {
-              emailsSent++;
+            if (canSendFollowup14d) {
+              if (resendConfigured) {
+                const ok = await sendEmail(
+                  resendKey,
+                  userEmail,
+                  "Quick check-in — are you moving forward with your hire?",
+                  buildCompletedD3Html(userName, session.id)
+                );
+                if (ok) emailsSent++;
+                else errors++;
+              } else {
+                emailsSent++;
+              }
             }
             updates.completed_d3 = new Date().toISOString();
           }
 
           // Day 7
           if (daysSinceComplete >= 7 && !followup.completed_d7) {
-            if (resendConfigured) {
-              const ok = await sendEmail(
-                resendKey,
-                userEmail,
-                "A story about a founder in your exact situation",
-                buildCompletedD7Html(userName)
-              );
-              if (ok) emailsSent++;
-              else errors++;
-            } else {
-              emailsSent++;
+            if (canSendFollowup14d) {
+              if (resendConfigured) {
+                const ok = await sendEmail(
+                  resendKey,
+                  userEmail,
+                  "A story about a founder in your exact situation",
+                  buildCompletedD7Html(userName)
+                );
+                if (ok) emailsSent++;
+                else errors++;
+              } else {
+                emailsSent++;
+              }
             }
             updates.completed_d7 = new Date().toISOString();
           }
@@ -318,7 +341,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
             const alreadyReengaged = (newerSessions ?? []).length > 0;
 
-            if (!alreadyReengaged) {
+            if (!alreadyReengaged && canSendFollowup6mo) {
               const roleTitle = String(
                 (sessionData.recommended_role as Record<string, unknown>)?.title ?? "Strategic Role"
               );
@@ -348,34 +371,38 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
           // Day 1 (24h after last activity)
           if (daysSinceUpdate >= 1 && !followup.abandoned_d1) {
-            if (resendConfigured) {
-              const ok = await sendEmail(
-                resendKey,
-                userEmail,
-                "You're partway through your PROFIT discovery — finish in 4 minutes",
-                buildAbandonedD1Html(userName, session.id)
-              );
-              if (ok) emailsSent++;
-              else errors++;
-            } else {
-              emailsSent++;
+            if (canSendAbandoned) {
+              if (resendConfigured) {
+                const ok = await sendEmail(
+                  resendKey,
+                  userEmail,
+                  "You're partway through your PROFIT discovery — finish in 4 minutes",
+                  buildAbandonedD1Html(userName, session.id)
+                );
+                if (ok) emailsSent++;
+                else errors++;
+              } else {
+                emailsSent++;
+              }
             }
             updates.abandoned_d1 = new Date().toISOString();
           }
 
           // Day 3
           if (daysSinceUpdate >= 3 && !followup.abandoned_d3) {
-            if (resendConfigured) {
-              const ok = await sendEmail(
-                resendKey,
-                userEmail,
-                "Still thinking about your next hire? Let's talk",
-                buildAbandonedD3Html(userName)
-              );
-              if (ok) emailsSent++;
-              else errors++;
-            } else {
-              emailsSent++;
+            if (canSendAbandoned) {
+              if (resendConfigured) {
+                const ok = await sendEmail(
+                  resendKey,
+                  userEmail,
+                  "Still thinking about your next hire? Let's talk",
+                  buildAbandonedD3Html(userName)
+                );
+                if (ok) emailsSent++;
+                else errors++;
+              } else {
+                emailsSent++;
+              }
             }
             updates.abandoned_d3 = new Date().toISOString();
           }

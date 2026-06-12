@@ -1,4 +1,4 @@
-import { getCurrentProfile } from "@/lib/services/users";
+import { getCurrentProfile, DEFAULT_NOTIFICATION_PREFS } from "@/lib/services/users";
 import { redirect } from "next/navigation";
 import AccountSettingsClient from "./AccountSettingsClient";
 
@@ -19,6 +19,10 @@ export default async function AccountSettingsPage() {
         industry={profile.industry ?? ""}
         teamSize={profile.team_size ?? null}
         anonymousMode={profile.anonymous_mode ?? false}
+        notificationPrefs={{
+          ...DEFAULT_NOTIFICATION_PREFS,
+          ...(profile.notification_preferences ?? {}),
+        }}
       />
     </main>
   );

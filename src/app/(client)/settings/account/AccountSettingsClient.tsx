@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { updateProfileAction, changePasswordAction, deleteAccountAction } from "./actions";
+import { updateProfileAction, changePasswordAction, deleteAccountAction, updateNotificationPrefsAction } from "./actions";
+import type { NotificationPreferences } from "@/lib/services/users";
 
 type ActionState = { error?: string; success?: boolean } | null;
 
@@ -28,6 +29,7 @@ interface Props {
   industry: string;
   teamSize: number | null;
   anonymousMode: boolean;
+  notificationPrefs: NotificationPreferences;
 }
 
 export default function AccountSettingsClient({
@@ -37,6 +39,7 @@ export default function AccountSettingsClient({
   industry,
   teamSize,
   anonymousMode,
+  notificationPrefs,
 }: Props) {
   const [profileState, profileAction, profilePending] = useActionState<ActionState, FormData>(
     updateProfileAction,
@@ -48,6 +51,10 @@ export default function AccountSettingsClient({
   );
   const [deleteState, deleteAction, deletePending] = useActionState<ActionState, FormData>(
     deleteAccountAction,
+    null
+  );
+  const [notifState, notifAction, notifPending] = useActionState<ActionState, FormData>(
+    updateNotificationPrefsAction,
     null
   );
 
@@ -231,6 +238,79 @@ export default function AccountSettingsClient({
           <CardFooter>
             <Button type="submit" disabled={passwordPending}>
               {passwordPending ? "Updating..." : "Update password"}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+
+      {/* Email notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Email notifications</CardTitle>
+          <CardDescription>
+            Choose which emails you receive from HireRight.
+          </CardDescription>
+        </CardHeader>
+        <form action={notifAction}>
+          <CardContent className="space-y-4">
+            {notifState?.error && (
+              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                {notifState.error}
+              </div>
+            )}
+            {notifState?.success && (
+              <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+                Notification preferences saved.
+              </div>
+            )}
+            {[
+              {
+                name: "session_complete",
+                label: "Session complete",
+                description: "Receive an email when your PROFIT discovery session generates a report.",
+                defaultChecked: notificationPrefs.session_complete,
+              },
+              {
+                name: "followup_14d",
+                label: "14-day follow-up",
+                description: "A check-in email if you haven't started a session after signing up.",
+                defaultChecked: notificationPrefs.followup_14d,
+              },
+              {
+                name: "followup_6mo",
+                label: "6-month progress check",
+                description: "A check-in email 6 months after completing a session.",
+                defaultChecked: notificationPrefs.followup_6mo,
+              },
+              {
+                name: "marketing",
+                label: "Resources & announcements",
+                description: "New articles, office hours invites, and product updates.",
+                defaultChecked: notificationPrefs.marketing,
+              },
+            ].map(({ name, label, description, defaultChecked }) => (
+              <label
+                key={name}
+                className="flex items-start gap-3 cursor-pointer group"
+              >
+                <input
+                  type="checkbox"
+                  name={name}
+                  defaultChecked={defaultChecked}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0"
+                />
+                <div>
+                  <p className="text-sm font-medium text-gray-800 group-hover:text-gray-900">
+                    {label}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+                </div>
+              </label>
+            ))}
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" disabled={notifPending}>
+              {notifPending ? "Saving..." : "Save preferences"}
             </Button>
           </CardFooter>
         </form>

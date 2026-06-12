@@ -2,6 +2,20 @@
 import { createClient } from "@/lib/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export interface NotificationPreferences {
+  session_complete: boolean;
+  followup_14d: boolean;
+  followup_6mo: boolean;
+  marketing: boolean;
+}
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
+  session_complete: true,
+  followup_14d: true,
+  followup_6mo: true,
+  marketing: false,
+};
+
 export type UserProfile = {
   id: string;
   email: string;
@@ -12,6 +26,7 @@ export type UserProfile = {
   industry: string | null;
   team_size: number | null;
   anonymous_mode: boolean;
+  notification_preferences: NotificationPreferences;
   created_at: string;
   updated_at: string;
 };
@@ -22,6 +37,9 @@ function untyped(client: Awaited<ReturnType<typeof createClient>>): SupabaseClie
   return client as unknown as SupabaseClient;
 }
 
+const PROFILE_COLUMNS =
+  "id, email, full_name, role, referral_code, company_name, industry, team_size, anonymous_mode, notification_preferences, created_at, updated_at";
+
 export async function getCurrentProfile(): Promise<UserProfile | null> {
   const _supabase = await createClient();
   const { data: { user } } = await _supabase.auth.getUser();
@@ -29,11 +47,17 @@ export async function getCurrentProfile(): Promise<UserProfile | null> {
   const supabase = untyped(_supabase);
   const { data, error } = await supabase
     .from("hr_users")
-    .select("id, email, full_name, role, referral_code, company_name, industry, team_size, anonymous_mode, created_at, updated_at")
+    .select(PROFILE_COLUMNS)
     .eq("id", user.id)
     .single();
   if (error || !data) return null;
-  return data as UserProfile;
+  const profile = data as UserProfile;
+  // Ensure notification_preferences has all keys (backfill for existing rows)
+  profile.notification_preferences = {
+    ...DEFAULT_NOTIFICATION_PREFS,
+    ...(profile.notification_preferences ?? {}),
+  };
+  return profile;
 }
 
 export async function updateProfile(updates: {
@@ -42,18 +66,45 @@ export async function updateProfile(updates: {
   industry?: string | null;
   team_size?: number | null;
   anonymous_mode?: boolean;
+  notification_preferences?: Partial<NotificationPreferences>;
 }) {
   const _supabase = await createClient();
   const { data: { user } } = await _supabase.auth.getUser();
   if (!user) return { error: new Error("Not authenticated") };
   const supabase = untyped(_supabase);
+
+  // For notification_preferences, merge with existing rather than replace
+  let payload: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() };
+  if (updates.notification_preferences) {
+    // Get current prefs first, then merge
+    const { data: existing } = await supabase
+      .from("hr_users")
+      .select("notification_preferences")
+      .eq("id", user.id)
+      .single();
+    const currentPrefs = (existing as { notification_preferences: NotificationPreferences } | null)
+      ?.notification_preferences ?? DEFAULT_NOTIFICATION_PREFS;
+    payload = {
+      ...payload,
+      notification_preferences: { ...currentPrefs, ...updates.notification_preferences },
+    };
+  }
+
   const { data, error } = await supabase
     .from("hr_users")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq("id", user.id)
-    .select("id, email, full_name, role, referral_code, company_name, industry, team_size, anonymous_mode, created_at, updated_at")
+    .select(PROFILE_COLUMNS)
     .single();
   return { data, error };
+}
+
+export async function updateNotificationPreferences(
+  prefs: Partial<NotificationPreferences>
+): Promise<{ error: string | null }> {
+  const result = await updateProfile({ notification_preferences: prefs });
+  if (result.error) return { error: "Failed to update notification preferences" };
+  return { error: null };
 }
 
 export async function deleteAccount() {
