@@ -10,6 +10,8 @@ import { getReport } from "@/lib/services/reports";
 const ShareSchema = z.object({
   recipients: z.array(z.string().email()).min(1).max(5),
   personal_message: z.string().max(1000).optional(),
+  // report_url is the public /shared/[token] URL built server-side from the
+  // report's share_token — the client passes it so we don't need a DB lookup here.
   report_url: z.string().url(),
 });
 
