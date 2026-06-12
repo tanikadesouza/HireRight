@@ -430,7 +430,28 @@ Deno.serve(async (req: Request): Promise<Response> => {
       }
     }
 
-    const result = `Processed ${sessions?.length ?? 0} sessions. Emails sent: ${emailsSent}. Errors: ${errors}.`;
+    // -------------------------------------------------------------------------
+    // Mark sessions idle > 7 days as abandoned (PRD: sessions idle 7d+ → abandoned)
+    // Run this after follow-up emails so the D1/D3 sequences fire before the
+    // status changes (next cron run won't pick them up as in_progress anymore).
+    // -------------------------------------------------------------------------
+    const abandonCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { error: abandonError, count: abandonedCount } = await serviceClient
+      .from("hr_profit_sessions")
+      .update({ status: "abandoned", updated_at: new Date().toISOString() })
+      .eq("status", "in_progress")
+      .lte("updated_at", abandonCutoff);
+
+    if (abandonError) {
+      await logError(serviceClient, {
+        functionName: "hr_followup_cron",
+        errorMessage: "Failed to mark sessions as abandoned",
+        errorDetail: abandonError.message,
+        severity: "warn",
+      });
+    }
+
+    const result = `Processed ${sessions?.length ?? 0} sessions. Emails sent: ${emailsSent}. Abandoned: ${abandonedCount ?? 0}. Errors: ${errors}.`;
     await completeJobRun(serviceClient, runId, errors > 0 ? "failure" : "success", result);
 
     return new Response(
