@@ -13,26 +13,42 @@ const STATUS_OPTIONS = [
   { value: "abandoned", label: "Abandoned" },
 ];
 
+const PER_PAGE = 50;
+
 interface SessionsPageProps {
-  searchParams: Promise<{ status?: string; user?: string }>;
+  searchParams: Promise<{ status?: string; user?: string; page?: string }>;
 }
 
 export default async function AdminSessionsPage({ searchParams }: SessionsPageProps) {
   const params = await searchParams;
   const statusFilter = params.status ?? "all";
   const userFilter = params.user;
+  const currentPage = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
 
-  const { data: sessions, error } = await getAllSessions({
+  const { data: sessions, total, error } = await getAllSessions({
     status: statusFilter === "all" ? undefined : statusFilter,
     userId: userFilter,
+    page: currentPage,
   });
+
+  const totalPages = Math.ceil(total / PER_PAGE);
 
   // Resolve user name for the filter banner (pull from first session result)
   const filteredUser = userFilter && sessions && sessions.length > 0
     ? sessions[0].user
     : null;
 
-  // Build base href preserving user filter across status tabs
+  // Build URL preserving all current filters + a specific page
+  function pageHref(page: number) {
+    const p = new URLSearchParams();
+    if (statusFilter !== "all") p.set("status", statusFilter);
+    if (userFilter) p.set("user", userFilter);
+    if (page > 1) p.set("page", String(page));
+    const qs = p.toString();
+    return `/admin/sessions${qs ? `?${qs}` : ""}`;
+  }
+
+  // Build base href preserving user filter + resetting to page 1 on tab change
   function tabHref(status: string) {
     const p = new URLSearchParams();
     if (status !== "all") p.set("status", status);
@@ -44,7 +60,15 @@ export default async function AdminSessionsPage({ searchParams }: SessionsPagePr
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Sessions</h1>
+          {total > 0 && (
+            <p className="text-sm text-gray-500 mt-0.5">
+              {total} session{total !== 1 ? "s" : ""}
+              {totalPages > 1 && ` · page ${currentPage} of ${totalPages}`}
+            </p>
+          )}
+        </div>
         <a
           href="/admin/export?type=sessions"
           download
@@ -103,6 +127,58 @@ export default async function AdminSessionsPage({ searchParams }: SessionsPagePr
           <SessionTable sessions={sessions ?? []} showActions />
         )}
       </div>
+
+      {/* Pagination controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <p className="text-sm text-gray-500">
+            Showing {(currentPage - 1) * PER_PAGE + 1}–{Math.min(currentPage * PER_PAGE, total)} of {total}
+          </p>
+          <div className="flex items-center gap-2">
+            {currentPage > 1 && (
+              <Link
+                href={pageHref(currentPage - 1)}
+                className="px-3 py-1.5 text-sm font-medium bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                ← Previous
+              </Link>
+            )}
+            {/* Page number pills — show at most 5 around current page */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+              .reduce<(number | "…")[]>((acc, p, i, arr) => {
+                if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("…");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, i) =>
+                p === "…" ? (
+                  <span key={`ellipsis-${i}`} className="px-2 text-gray-400 text-sm">…</span>
+                ) : (
+                  <Link
+                    key={p}
+                    href={pageHref(p as number)}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      p === currentPage
+                        ? "bg-gray-900 text-white"
+                        : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {p}
+                  </Link>
+                )
+              )}
+            {currentPage < totalPages && (
+              <Link
+                href={pageHref(currentPage + 1)}
+                className="px-3 py-1.5 text-sm font-medium bg-white border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Next →
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

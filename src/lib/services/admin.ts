@@ -61,24 +61,42 @@ function untyped(client: Awaited<ReturnType<typeof createClient>>): SupabaseClie
 // Session queries
 // ---------------------------------------------------------------------------
 
+const SESSIONS_PER_PAGE = 50;
+
 /**
- * Returns all client sessions across all users, with optional filters.
- * Joins hr_profit_sessions with hr_users.
+ * Returns client sessions across all users, with optional filters and pagination.
+ * Returns { data, total, error } where total is the unfiltered count for the
+ * current filter set (used to render pagination controls).
  */
 export async function getAllSessions(filters?: {
   status?: string;
   tag?: string;
   userId?: string;
-}): Promise<{ data: AdminSession[] | null; error: string | null }> {
+  page?: number;
+}): Promise<{ data: AdminSession[] | null; total: number; error: string | null }> {
   try {
     const supabase = await createClient();
+    const page = Math.max(1, filters?.page ?? 1);
+    const from = (page - 1) * SESSIONS_PER_PAGE;
+    const to = from + SESSIONS_PER_PAGE - 1;
+
+    // If filtering by tag, we need to pre-resolve user IDs (tag filter is post-query)
+    let tagUserIds: string[] | null = null;
+    if (filters?.tag) {
+      tagUserIds = await getUserIdsByTag(filters.tag);
+      // If no users match the tag, return empty result immediately
+      if (!tagUserIds || tagUserIds.length === 0) {
+        return { data: [], total: 0, error: null };
+      }
+    }
 
     let query = supabase
       .from("hr_profit_sessions")
       .select(
         `id, user_id, status, current_step, session_data, report_generated,
          completed_at, created_at, updated_at,
-         user:hr_users(id, email, full_name)`
+         user:hr_users(id, email, full_name)`,
+        { count: "exact" }
       )
       .order("created_at", { ascending: false });
 
@@ -90,26 +108,23 @@ export async function getAllSessions(filters?: {
       query = query.eq("user_id", filters.userId);
     }
 
-    const { data, error } = await query;
+    if (tagUserIds) {
+      query = query.in("user_id", tagUserIds);
+    }
+
+    const { data, error, count } = await query.range(from, to);
 
     if (error) {
-      return { data: null, error: "Failed to load sessions" };
+      return { data: null, total: 0, error: "Failed to load sessions" };
     }
 
-    let sessions = (data ?? []) as AdminSession[];
-
-    // Filter by tag if specified (post-query filter via user's tags)
-    if (filters?.tag) {
-      const tagName = filters.tag;
-      const userIds = await getUserIdsByTag(tagName);
-      if (userIds) {
-        sessions = sessions.filter((s) => userIds.includes(s.user_id));
-      }
-    }
-
-    return { data: sessions, error: null };
+    return {
+      data: (data ?? []) as AdminSession[],
+      total: count ?? 0,
+      error: null,
+    };
   } catch {
-    return { data: null, error: "Failed to load sessions" };
+    return { data: null, total: 0, error: "Failed to load sessions" };
   }
 }
 
