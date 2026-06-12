@@ -46,6 +46,9 @@ export interface AdminUser {
   email: string;
   full_name: string | null;
   role: string;
+  company_name: string | null;
+  industry: string | null;
+  anonymous_mode: boolean;
   created_at: string;
   tags?: AdminTag[];
 }
@@ -344,21 +347,25 @@ export async function getAllUsers(): Promise<{
     const _supabase = await createClient();
     // hr_users IS in the typed schema, but the join to hr_user_tags/hr_tags is not.
     // Use the typed client for the base select and cast the result.
-    const { data, error } = await _supabase
+    const supabase = untyped(_supabase);
+    const { data, error } = await supabase
       .from("hr_users")
-      .select("id, email, full_name, role, created_at")
+      .select("id, email, full_name, role, company_name, industry, anonymous_mode, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
       return { data: null, error: "Failed to load users" };
     }
 
-    const users: AdminUser[] = (data ?? []).map((u) => ({
-      id: u.id,
-      email: u.email,
-      full_name: u.full_name,
-      role: u.role,
-      created_at: u.created_at,
+    const users: AdminUser[] = (data ?? []).map((u: Record<string, unknown>) => ({
+      id: u.id as string,
+      email: u.email as string,
+      full_name: (u.full_name as string | null) ?? null,
+      role: u.role as string,
+      company_name: (u.company_name as string | null) ?? null,
+      industry: (u.industry as string | null) ?? null,
+      anonymous_mode: Boolean(u.anonymous_mode),
+      created_at: u.created_at as string,
       tags: [],
     }));
 

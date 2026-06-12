@@ -187,10 +187,20 @@ export default async function AdminClientsPage({ searchParams }: AdminClientsPag
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-medium text-gray-900">
-                            {user.full_name ?? "(no name)"}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">
+                              {user.full_name ?? "(no name)"}
+                            </p>
+                            {user.anonymous_mode && (
+                              <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">
+                                anon
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
+                          {user.company_name && (
+                            <p className="text-xs text-gray-500 mt-0.5">{user.company_name}</p>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
