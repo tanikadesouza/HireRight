@@ -63,12 +63,24 @@ export default async function AdminClientsPage({ searchParams }: AdminClientsPag
             {tagFilter ? ` tagged "${tagFilter}"` : ""}
           </p>
         </div>
-        <Link
-          href="/admin/bulk-email"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
-        >
-          Bulk Email
-        </Link>
+        <div className="flex items-center gap-3">
+          <a
+            href="/admin/export?type=users"
+            download
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-xl transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </a>
+          <Link
+            href="/admin/bulk-email"
+            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
+          >
+            Bulk Email
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
