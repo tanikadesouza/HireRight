@@ -85,7 +85,15 @@ async function sendEmail(
   }
 }
 
-function buildCompletedD1Html(name: string, sessionId: string, roleTitle: string): string {
+function unsubFooter(userId: string, prefKey: string): string {
+  const url = `${APP_URL}/api/unsubscribe?uid=${userId}&type=${prefKey}`;
+  return `<div style="border-top:1px solid #f3f4f6;padding:16px 32px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+    <p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p>
+    <a href="${url}" style="color:#9ca3af;font-size:12px;text-decoration:underline">Unsubscribe</a>
+  </div>`;
+}
+
+function buildCompletedD1Html(name: string, sessionId: string, roleTitle: string, userId: string): string {
   const reportUrl = `${APP_URL}/reports/${sessionId}`;
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
     <div style="background:#1d4ed8;padding:20px 32px"><p style="color:#fff;font-weight:700;margin:0;font-size:16px">HireRight</p></div>
@@ -99,11 +107,11 @@ function buildCompletedD1Html(name: string, sessionId: string, roleTitle: string
       </ol>
       <a href="${reportUrl}" style="display:inline-block;background:#1d4ed8;color:#fff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:10px;text-decoration:none">View Your Report →</a>
     </div>
-    <div style="border-top:1px solid #f3f4f6;padding:16px 32px"><p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p></div>
+    ${unsubFooter(userId, "followup_14d")}
   </div>`;
 }
 
-function buildCompletedD3Html(name: string, sessionId: string): string {
+function buildCompletedD3Html(name: string, sessionId: string, userId: string): string {
   const reportUrl = `${APP_URL}/reports/${sessionId}`;
   const calendlyUrl = "https://calendly.com/hireright/discovery";
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
@@ -117,11 +125,11 @@ function buildCompletedD3Html(name: string, sessionId: string): string {
         <a href="${calendlyUrl}" style="display:inline-block;background:#fff;color:#374151;font-weight:600;font-size:14px;padding:12px 20px;border-radius:10px;text-decoration:none;border:1px solid #d1d5db">Book a Call</a>
       </div>
     </div>
-    <div style="border-top:1px solid #f3f4f6;padding:16px 32px"><p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p></div>
+    ${unsubFooter(userId, "followup_14d")}
   </div>`;
 }
 
-function buildCompletedD7Html(name: string): string {
+function buildCompletedD7Html(name: string, userId: string): string {
   const calendlyUrl = "https://calendly.com/hireright/discovery";
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
     <div style="background:#1d4ed8;padding:20px 32px"><p style="color:#fff;font-weight:700;margin:0;font-size:16px">HireRight</p></div>
@@ -132,11 +140,11 @@ function buildCompletedD7Html(name: string): string {
       <p style="color:#374151;font-size:15px;margin:0 0 24px">Your roadmap is waiting. Let's talk about what implementation looks like for you.</p>
       <a href="${calendlyUrl}" style="display:inline-block;background:#1d4ed8;color:#fff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:10px;text-decoration:none">Book a Strategy Call →</a>
     </div>
-    <div style="border-top:1px solid #f3f4f6;padding:16px 32px"><p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p></div>
+    ${unsubFooter(userId, "followup_14d")}
   </div>`;
 }
 
-function buildCompleted6moHtml(name: string, roleTitle: string, sessionId: string): string {
+function buildCompleted6moHtml(name: string, roleTitle: string, sessionId: string, userId: string): string {
   const newSessionUrl = `${APP_URL}/discovery`;
   const calendlyUrl = "https://calendly.com/hireright/discovery";
   const reportUrl = `${APP_URL}/reports/${sessionId}`;
@@ -153,11 +161,11 @@ function buildCompleted6moHtml(name: string, roleTitle: string, sessionId: strin
       </div>
       <p style="margin:16px 0 0"><a href="${reportUrl}" style="color:#6b7280;font-size:13px;text-decoration:underline">View your original report</a></p>
     </div>
-    <div style="border-top:1px solid #f3f4f6;padding:16px 32px"><p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p></div>
+    ${unsubFooter(userId, "followup_6mo")}
   </div>`;
 }
 
-function buildAbandonedD1Html(name: string, sessionId: string): string {
+function buildAbandonedD1Html(name: string, sessionId: string, userId: string): string {
   const resumeUrl = `${APP_URL}/discovery/${sessionId}`;
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
     <div style="background:#1d4ed8;padding:20px 32px"><p style="color:#fff;font-weight:700;margin:0;font-size:16px">HireRight</p></div>
@@ -167,11 +175,11 @@ function buildAbandonedD1Html(name: string, sessionId: string): string {
       <p style="color:#374151;font-size:15px;margin:0 0 24px">Most founders finish in under 4 minutes from where you are. Your strategic hiring roadmap is waiting on the other side.</p>
       <a href="${resumeUrl}" style="display:inline-block;background:#1d4ed8;color:#fff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:10px;text-decoration:none">Continue My Discovery →</a>
     </div>
-    <div style="border-top:1px solid #f3f4f6;padding:16px 32px"><p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p></div>
+    ${unsubFooter(userId, "followup_14d")}
   </div>`;
 }
 
-function buildAbandonedD3Html(name: string): string {
+function buildAbandonedD3Html(name: string, userId: string): string {
   const calendlyUrl = "https://calendly.com/hireright/discovery";
   return `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
     <div style="background:#1d4ed8;padding:20px 32px"><p style="color:#fff;font-weight:700;margin:0;font-size:16px">HireRight</p></div>
@@ -181,7 +189,7 @@ function buildAbandonedD3Html(name: string): string {
       <p style="color:#374151;font-size:15px;margin:0 0 24px">Book a quick 30-minute call with Tanika. We can walk through the PROFIT method live and get you the clarity you need — no prep required.</p>
       <a href="${calendlyUrl}" style="display:inline-block;background:#1d4ed8;color:#fff;font-weight:600;font-size:14px;padding:12px 24px;border-radius:10px;text-decoration:none">Book a Quick Call →</a>
     </div>
-    <div style="border-top:1px solid #f3f4f6;padding:16px 32px"><p style="color:#9ca3af;font-size:12px;margin:0">HireRight — Strategic Hiring Clarity</p></div>
+    ${unsubFooter(userId, "followup_14d")}
   </div>`;
 }
 
@@ -279,7 +287,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   resendKey,
                   userEmail,
                   `Your HireRight Roadmap — ${roleTitle}`,
-                  buildCompletedD1Html(userName, session.id, roleTitle)
+                  buildCompletedD1Html(userName, session.id, roleTitle, session.user_id)
                 );
                 if (ok) emailsSent++;
                 else errors++;
@@ -298,7 +306,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   resendKey,
                   userEmail,
                   "Quick check-in — are you moving forward with your hire?",
-                  buildCompletedD3Html(userName, session.id)
+                  buildCompletedD3Html(userName, session.id, session.user_id)
                 );
                 if (ok) emailsSent++;
                 else errors++;
@@ -317,7 +325,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   resendKey,
                   userEmail,
                   "A story about a founder in your exact situation",
-                  buildCompletedD7Html(userName)
+                  buildCompletedD7Html(userName, session.user_id)
                 );
                 if (ok) emailsSent++;
                 else errors++;
@@ -350,7 +358,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   resendKey,
                   userEmail,
                   "6-month check-in — how did that hire work out?",
-                  buildCompleted6moHtml(userName, roleTitle, session.id)
+                  buildCompleted6moHtml(userName, roleTitle, session.id, session.user_id)
                 );
                 if (ok) emailsSent++;
                 else errors++;
@@ -377,7 +385,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   resendKey,
                   userEmail,
                   "You're partway through your PROFIT discovery — finish in 4 minutes",
-                  buildAbandonedD1Html(userName, session.id)
+                  buildAbandonedD1Html(userName, session.id, session.user_id)
                 );
                 if (ok) emailsSent++;
                 else errors++;
@@ -396,7 +404,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
                   resendKey,
                   userEmail,
                   "Still thinking about your next hire? Let's talk",
-                  buildAbandonedD3Html(userName)
+                  buildAbandonedD3Html(userName, session.user_id)
                 );
                 if (ok) emailsSent++;
                 else errors++;

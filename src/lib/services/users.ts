@@ -107,6 +107,26 @@ export async function updateNotificationPreferences(
   return { error: null };
 }
 
+const VALID_UNSUB_KEYS = new Set(["followup_14d", "followup_6mo", "marketing"]);
+
+export async function unsubscribeUser(
+  userId: string,
+  prefKey: string
+): Promise<{ error: string | null }> {
+  if (!VALID_UNSUB_KEYS.has(prefKey)) return { error: "Invalid preference key" };
+
+  const _supabase = await createClient();
+  const supabase = untyped(_supabase);
+
+  const { error } = await supabase.rpc("hr_unsubscribe_from_emails", {
+    p_user_id: userId,
+    p_pref_key: prefKey,
+  });
+
+  if (error) return { error: "Failed to process unsubscribe" };
+  return { error: null };
+}
+
 export async function deleteAccount() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
