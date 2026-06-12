@@ -1,6 +1,7 @@
 "use server";
 import { getUser, signIn, updatePassword, signOut } from "@/lib/services/auth";
 import { updateProfile, updateNotificationPreferences } from "@/lib/services/users";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function updateProfileAction(_prevState: unknown, formData: FormData) {
@@ -86,14 +87,39 @@ export async function deleteAccountAction(_prevState: unknown, formData: FormDat
   const confirmation = formData.get("confirmation") as string;
 
   if (confirmation !== "DELETE") {
-    return { error: 'Please type DELETE to confirm account deletion' };
+    return { error: "Please type DELETE to confirm account deletion" };
   }
 
   const user = await getUser();
   if (!user) redirect("/login");
 
-  // Sign out first — account deletion requires admin auth (handled by edge function)
-  // For now, sign out and redirect; full deletion handled via edge function
+  // Get the user's access token to pass to the edge function
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) redirect("/login");
+
+  const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/hr_delete_account`;
+
+  try {
+    const res = await fetch(fnUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      },
+      body: JSON.stringify({ confirmation: "DELETE" }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: (data as { error?: string }).error ?? "Failed to delete account. Please try again." };
+    }
+  } catch {
+    return { error: "Failed to delete account. Please check your connection and try again." };
+  }
+
+  // Account deleted — sign out client session and redirect
   await signOut();
-  redirect("/login?message=Account+deletion+requested");
+  redirect("/?message=Account+deleted");
 }
