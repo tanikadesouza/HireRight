@@ -5,7 +5,8 @@
 import Link from "next/link";
 import { getSessionWithUser, getNotes, getTags, getUserTags } from "@/lib/services/admin";
 import { getMessages } from "@/lib/services/profit-sessions";
-import { getHiringStage, HIRING_STAGE_LABELS } from "@/lib/services/reports";
+import { getHiringStage, getReport, HIRING_STAGE_LABELS } from "@/lib/services/reports";
+import type { FinancialModel } from "@/lib/services/reports";
 import { NoteForm } from "@/components/admin/NoteForm";
 import { TagManager } from "@/components/admin/TagManager";
 import type { AdminNote, AdminTag } from "@/lib/services/admin";
@@ -29,13 +30,14 @@ export default async function AdminSessionDetailPage({
 }: AdminSessionDetailProps) {
   const { sessionId } = await params;
 
-  const [sessionResult, notesResult, tagsResult, messagesResult, hiringStageResult] =
+  const [sessionResult, notesResult, tagsResult, messagesResult, hiringStageResult, reportResult] =
     await Promise.all([
       getSessionWithUser(sessionId),
       getNotes(sessionId),
       getTags(),
       getMessages(sessionId),
       getHiringStage(sessionId),
+      getReport(sessionId),
     ]);
 
   const session = sessionResult.data;
@@ -49,6 +51,7 @@ export default async function AdminSessionDetailPage({
   const userTags: AdminTag[] = userTagsResult.data ?? [];
   const messages = messagesResult.data ?? [];
   const hiringStage = hiringStageResult.data;
+  const financialModel = reportResult.data?.report_data?.financial_model as FinancialModel | null | undefined;
 
   if (!session) {
     return (
@@ -168,6 +171,51 @@ export default async function AdminSessionDetailPage({
           </dl>
         )}
       </div>
+
+      {/* Financial Model (if founder used the calculator) */}
+      {financialModel && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+            Financial Model (Founder&apos;s Inputs)
+          </h2>
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-3 text-sm">
+            <div>
+              <dt className="text-gray-400">Base Salary</dt>
+              <dd className="font-medium text-gray-800">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(financialModel.base_salary)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-400">Benefits %</dt>
+              <dd className="font-medium text-gray-800">{financialModel.benefits_pct}%</dd>
+            </div>
+            <div>
+              <dt className="text-gray-400">Tools Cost</dt>
+              <dd className="font-medium text-gray-800">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(financialModel.tools_cost)}/yr
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-400">Mgmt Time</dt>
+              <dd className="font-medium text-gray-800">{financialModel.mgmt_hours} hrs/wk</dd>
+            </div>
+            <div>
+              <dt className="text-gray-400">Their Hourly Rate</dt>
+              <dd className="font-medium text-gray-800">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(financialModel.your_hourly_rate)}/hr
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-400">Expected Revenue Uplift</dt>
+              <dd className="font-medium text-gray-800">
+                {financialModel.expected_revenue > 0
+                  ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(financialModel.expected_revenue) + "/yr"
+                  : "Not entered"}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      )}
 
       {/* Client Tags — interactive assign/remove/create */}
       {session.user && (
